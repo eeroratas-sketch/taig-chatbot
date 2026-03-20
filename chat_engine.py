@@ -145,18 +145,34 @@ class ChatEngine:
         """Töötle kasutaja sõnum ja tagasta vastus."""
         session = self._get_session(session_id)
 
-        # 1. Otsi relevantsed tooted
+        # 1. Tuvasta kas on äriküsimus (ei vaja tooteotsinguud)
+        msg_lower = user_message.lower()
+        business_keywords = [
+            'allahindlus', 'soodustus', 'soodsamalt', 'kupong', 'kood',
+            'tarne', 'kohaletoimetam', 'saatmine', 'pakiautomaat', 'kuller',
+            'tagastus', 'vahetus', 'reklamatsioon', 'garantii',
+            'makse', 'makseviis', 'pangalink', 'kaardimaks', 'järelmaks',
+            'kontakt', 'email', 'telefon', 'aadress',
+            'hulgi', 'suurem tellimus', 'erikokku',
+            'aitäh', 'tänan', 'tänud', 'head aega',
+            'tere', 'hei', 'tsau', 'tervist',
+        ]
+        is_business_query = any(kw in msg_lower for kw in business_keywords)
+
+        # 2. Otsi relevantsed tooted
         search_results = self.search.search(user_message, max_results=config.MAX_PRODUCT_CONTEXT)
 
-        # 2. Koosta kontekst
+        # 3. Koosta kontekst
         if search_results:
             product_context = "LEITUD TOOTED (kasuta neid vastamiseks):\n\n"
             for i, p in enumerate(search_results, 1):
                 product_context += f"--- Toode {i} ---\n"
                 product_context += _format_product_for_context(p)
                 product_context += "\n\n"
+        elif is_business_query:
+            product_context = "See on äriküsimus (allahindlus/tarne/makse/kontakt). Vasta oma teadmiste põhjal süsteemipromptist. Ära ütle et tooteid pole - see pole tooteotsinguga seotud küsimus.\n"
         else:
-            product_context = "OTSINGUGA EI LEITUD ÜHTEGI SOBIVAT TOODET. Ütle kliendile, et hetkel sellist toodet valikus ei ole.\n"
+            product_context = "OTSINGUGA EI LEITUD ÜHTEGI SOBIVAT TOODET. Ütle kliendile ausalt, et hetkel ei leidnud täpset vastet. Paku vaadata kategooriaid lehel taig.ee või küsida teisiti.\n"
 
         # 3. Lisa kasutaja sõnum koos kontekstiga
         enriched_message = f"{user_message}\n\n---\n{product_context}"
