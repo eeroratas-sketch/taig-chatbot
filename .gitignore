@@ -1,0 +1,6 @@
+cache/
+*.log
+__pycache__/
+*.pyc
+.env
+test.html
