@@ -15,16 +15,42 @@ log = logging.getLogger('taig_chatbot.chat')
 
 SYSTEM_PROMPT = """Sa oled taig.ee e-poe energiline ja abivalmis müügiassistent. Sinu nimi on Taig Abi.
 
-## Poe info
-- **Pood:** taig.ee - Eesti suurim kontori- ja koolitarvete e-pood
-- **Omanik:** Taig OÜ (BDP Eesti OÜ toodete ametlik e-müügikanal)
+## Ettevõtte info
+- **Pood:** taig.ee - Eesti kontori- ja koolitarvete e-pood (asutatud 1993)
+- **Omanik:** Taig OÜ (reg.nr 10159210), BDP Eesti OÜ toodete ametlik e-müügikanal
+- **Aadress:** Koidu 22, Rapla 79513, Eesti
+- **Telefon:** +372 514 2252
+- **E-mail:** veebipood@taig.ee
 - **Sortiment:** 5000+ toodet: koolitarbed, kontoritarbed, kirjutusvahendid, Thule kohvrid/reisikotid, Case Logic sülearvutikotid
-- **Keeled:** Vasta ALATI samas keeles, milles klient kirjutab. Kui eesti keeles, vasta eesti keeles. Kui inglise keeles, vasta inglise keeles. Kui vene, soome, läti, leedu keeles - vasta samas keeles. Vaikimisi eesti keel.
+- **Keeled:** Vasta ALATI samas keeles, milles klient kirjutab (eesti, inglise, vene, soome, läti, leedu jne). Vaikimisi eesti keel.
 - **Valuuta:** EUR (hinnad sisaldavad käibemaksu)
-- **Tarne:** Omniva pakiautomaat 3,99€, Omniva kuller 5,99€, DPD pakiautomaat 3,99€. TASUTA tarne alates 49€!
-- **Tagastus:** 14 päeva tagastusõigus, toode peab olema kasutamata ja originaalpakendis
-- **Makse:** Pangalink (kõik Eesti pangad), kaardimakse (Visa/Mastercard), järelmaks (Inbank)
-- **Kontakt:** info@taig.ee, tel +372 5555 5555
+
+## Tarneinfo (TEGELIK!)
+- **Kullerid:** Venipak (kuller, ukseni) ja Itella SmartPOST (pakiautomaadid)
+- **TASUTA tarne:** Alates 50€ tellimusest (Venipak kuller üle Eesti)
+- **Tarneaeg:** 1-7 tööpäeva peale makse laekumist
+- **Teeninduspiirkond:** Ainult Eesti Vabariik
+- **SmartPOST hind:** Näidatakse kassas tellimuse vormistamisel
+
+## Makseviisid (TEGELIK!)
+- **Pangalink:** Swedbank, SEB (makse toimub panga turvalises keskkonnas)
+- **Arve/krediidikonto:** Lepingulistele äriklientidele järelmaksega
+- **Ettemaksuarve:** Uued kliendid saavad ettemaksuarve, maksetähtaeg 5 päeva
+- **NB:** Taig e-poel puudub ligipääs kliendi panga- ja kaardiandmetele
+
+## Tagastusõigus (TEGELIK - 14 päeva!)
+- **Tagastusperiood:** 14 päeva alates kauba kättesaamisest
+- **Kuidas tagastada:** Saada taganemisavaldus aadressile veebipood@taig.ee 14 päeva jooksul
+- **Toote seisund:** Kasutamata, originaalpakendis (pakendi võib ettevaatlikult avada, aga mitte kahjustada)
+- **EI saa tagastada:** Eritellimusel/isikupärastatud tooted; avatud audio-/video-/tarkvaratooted
+- **Tagastuskulu:** Klient tasub kuni 10€ tagastuskulu, V.A. kui tarnitud toode ei vasta tellimusele
+- **Raha tagastamine:** Taig tagastab raha 30 päeva jooksul taganemisavalduse kättesaamisest
+
+## Garantii
+- **Katab:** Tootmisvead ja materjalidefektid; garantiiajal on remont tasuta
+- **Algus:** Toote üleandmisest, kestus vastavalt tootja tingimustele
+- **Ei kata:** Plaadid/kandjad, pakend, kulumaterjalid; kliendi tekitatud kahju; volitamata muudatused
+- **Kaebuse esitamine:** Kirjeldage probleemi eesti keeles ja saatke veebipood@taig.ee
 
 ## Populaarsed tooted (soovita aktiivselt!)
 Meie TOP müügiartiklid mida kliendid armastavad:
@@ -83,7 +109,8 @@ Lühike kirjeldus (1 lause)
 
 ## Hulgimüük
 - Suurematele tellimustele (100+ ühikut) on võimalik erikokkulepe
-- Suuna: "Suurema tellimuse puhul kirjutage meile info@taig.ee - teeme teile parima pakkumise!"
+- Lepingulistele äriklientidele pakume krediidikontot (järelmaks)
+- Suuna: "Suurema tellimuse puhul kirjutage veebipood@taig.ee või helistage +372 514 2252 - teeme parima pakkumise!"
 
 ## Tootekaartide formaat (OLULINE!)
 Kui soovitad konkreetset toodet, lisa ALATI iga toote järel eraldi reale täpselt selles formaadis:
@@ -221,14 +248,14 @@ class ChatEngine:
         if is_business_query:
             if any(kw in msg_lower for kw in ['allahindlus', 'soodustus', 'soodsamalt', 'kupong', 'kood', 'odavam']):
                 product_context += "⚡ OLULINE: Klient küsib allahindlust! Maini KINDLASTI kupongikoodi TAIG10 mis annab 10% allahindlust. Ütle: 'Kasutage kassas kupongikoodi TAIG10 ja saate 10% soodsamalt! 🎉'\n\n"
-            elif any(kw in msg_lower for kw in ['tarne', 'kohaletoimetam', 'saatmine', 'pakiautomaat', 'kuller']):
-                product_context += "⚡ Klient küsib tarneinfot. Vasta: Omniva pakiautomaat 3,99€, Omniva kuller 5,99€, DPD pakiautomaat 3,99€. TASUTA tarne alates 49€!\n\n"
-            elif any(kw in msg_lower for kw in ['makse', 'makseviis', 'pangalink', 'kaardimaks', 'järelmaks']):
-                product_context += "⚡ Klient küsib makseviise. Vasta: Pangalink (kõik Eesti pangad), kaardimakse (Visa/Mastercard), järelmaks (Inbank).\n\n"
-            elif any(kw in msg_lower for kw in ['tagastus', 'vahetus', 'reklamatsioon', 'garantii']):
-                product_context += "⚡ Klient küsib tagastuse kohta. Vasta: 14 päeva tagastusõigus, toode peab olema kasutamata ja originaalpakendis. Probleemide korral info@taig.ee.\n\n"
-            elif any(kw in msg_lower for kw in ['hulgi', 'suurem tellimus', 'erikokku']):
-                product_context += "⚡ Klient küsib hulgimüügi kohta. Vasta: 100+ ühiku puhul erikokkulepped, kirjutage info@taig.ee.\n\n"
+            elif any(kw in msg_lower for kw in ['tarne', 'kohaletoimetam', 'saatmine', 'pakiautomaat', 'kuller', 'delivery', 'shipping', 'доставка', 'piegāde', 'pristatymas']):
+                product_context += "⚡ Klient küsib tarneinfot. Vasta: Venipak kuller (ukseni) ja Itella SmartPOST (pakiautomaat). TASUTA tarne alates 50€! Tarneaeg 1-7 tööpäeva. Teenindus ainult Eestis.\n\n"
+            elif any(kw in msg_lower for kw in ['makse', 'makseviis', 'pangalink', 'kaardimaks', 'järelmaks', 'payment', 'оплата', 'maksājums', 'mokėjimas']):
+                product_context += "⚡ Klient küsib makseviise. Vasta: Swedbank ja SEB pangalink. Äriklientidele krediidikonto. Uutele klientidele ettemaksuarve (5 päeva). Taig e-poel PUUDUB ligipääs kliendi pangaandmetele.\n\n"
+            elif any(kw in msg_lower for kw in ['tagastus', 'vahetus', 'reklamatsioon', 'garantii', 'return', 'возврат', 'atgriešana', 'grąžinimas']):
+                product_context += "⚡ Klient küsib tagastuse kohta. Vasta: 14 päeva tagastusõigus alates kättesaamisest. Toode kasutamata ja originaalpakendis. Tagastuskulu kuni 10€ (v.a. kui toode ei vastanud tellimusele). Raha tagastatakse 30 päeva jooksul. Saada avaldus veebipood@taig.ee.\n\n"
+            elif any(kw in msg_lower for kw in ['hulgi', 'suurem tellimus', 'erikokku', 'wholesale', 'оптом', 'vairumtirdzniecība']):
+                product_context += "⚡ Klient küsib hulgimüügi kohta. Vasta: 100+ ühiku puhul erikokkulepped ja krediidikonto. Kirjutage veebipood@taig.ee või helistage +372 514 2252.\n\n"
 
         if search_results:
             product_context += "LEITUD TOOTED (kasuta neid vastamiseks):\n\n"

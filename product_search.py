@@ -26,6 +26,10 @@ STOP_WORDS = {
     'хочу', 'купить', 'нужно', 'нужна', 'нужны', 'можно', 'пожалуйста',
     # Soome stop-sõnad
     'onko', 'teillä', 'minulle', 'haluan', 'ostaa', 'tarvitsen',
+    # Läti stop-sõnad
+    'vai', 'ir', 'man', 'jums', 'kur', 'kas', 'ko', 'kā', 'nav', 'gribu', 'pirkt', 'lūdzu', 'vajag',
+    # Leedu stop-sõnad
+    'ar', 'yra', 'man', 'jums', 'kur', 'kas', 'ką', 'kaip', 'nėra', 'noriu', 'pirkti', 'prašau', 'reikia',
     # Inglise stop-sõnad (laiendatud)
     'have', 'you', 'your', 'any', 'some', 'looking', 'need', 'want', 'buy',
     'can', 'could', 'please', 'show', 'find', 'search', 'get', 'like',
@@ -92,12 +96,44 @@ SYNONYMS = {
     'reppu': ['reppu', 'seljakott', 'backpack'],
     'matkalaukku': ['matkalaukku', 'kohver', 'suitcase'],
     'koulutarvikkeet': ['koulutarvikkeet', 'koolitarbed', 'school supplies'],
+    # Läti keele sünonüümid
+    'pildspalva': ['pildspalva', 'pildspalvas', 'pastakas', 'pen'],
+    'zīmulis': ['zīmulis', 'zīmuļi', 'pliiats', 'pencil'],
+    'šķēres': ['šķēres', 'käärid', 'scissors'],
+    'līme': ['līme', 'līmes', 'liim', 'glue'],
+    'dzēšgumija': ['dzēšgumija', 'kustukumm', 'eraser'],
+    'penālis': ['penālis', 'pinal', 'pencil case'],
+    'burtnīca': ['burtnīca', 'burtnīcas', 'vihik', 'notebook'],
+    'krāsas': ['krāsas', 'guaša', 'akvarele', 'värv', 'guašš', 'paint'],
+    'ota': ['ota', 'otas', 'pintsel', 'brush'],
+    'lineāls': ['lineāls', 'joonlaud', 'ruler'],
+    'marķieris': ['marķieris', 'marker', 'highlighter'],
+    'mugursoma': ['mugursoma', 'seljakott', 'backpack'],
+    'koferis': ['koferis', 'kohver', 'suitcase'],
+    'skolas': ['skolas', 'piederumi', 'koolitarbed', 'koolikaubad', 'school supplies'],
+    'kancelejas': ['kancelejas', 'preces', 'kontoritarbed', 'office supplies'],
+    # Leedu keele sünonüümid
+    'rašiklis': ['rašiklis', 'rašikliai', 'pastakas', 'pen'],
+    'pieštukas': ['pieštukas', 'pieštukai', 'pliiats', 'pencil'],
+    'žirklės': ['žirklės', 'käärid', 'scissors'],
+    'klijai': ['klijai', 'liim', 'glue'],
+    'trintukas': ['trintukas', 'kustukumm', 'eraser'],
+    'penalas': ['penalas', 'pinal', 'pencil case'],
+    'sąsiuvinis': ['sąsiuvinis', 'sąsiuviniai', 'vihik', 'notebook'],
+    'dažai': ['dažai', 'guašas', 'akvarelė', 'värv', 'guašš', 'paint'],
+    'teptukas': ['teptukas', 'pintsel', 'brush'],
+    'liniuotė': ['liniuotė', 'joonlaud', 'ruler'],
+    'žymeklis': ['žymeklis', 'marker', 'highlighter'],
+    'kuprinė': ['kuprinė', 'seljakott', 'backpack'],
+    'lagaminas': ['lagaminas', 'kohver', 'suitcase'],
+    'mokyklinės': ['mokyklinės', 'priemonės', 'mokykliniai', 'koolitarbed', 'koolikaubad', 'school supplies'],
+    'kanceliarinės': ['kanceliarinės', 'prekės', 'kontoritarbed', 'office supplies'],
 }
 
 
 def tokenize(text):
     """Tükelda tekst sõnadeks, eemalda stoppsõnad."""
-    words = re.findall(r'[a-züõäöšžа-яёА-ЯЁäöåéèêëïîôûüùç\d]+', text.lower())
+    words = re.findall(r'[a-züõäöšžа-яёА-ЯЁäöåéèêëïîôûüùçāčēģīķļņšūžąčęėįšųūž\d]+', text.lower())
     return [w for w in words if w not in STOP_WORDS and len(w) > 1]
 
 
