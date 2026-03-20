@@ -198,10 +198,10 @@
   const QUICK_ACTIONS_I18N = {
     et: {
       home: [
-        { label: '📚 Koolitarbed', query: 'Näita populaarseid koolitarbeid' },
+        { label: '🧳 Thule tooted', query: 'Näita Thule kohvreid ja kotte' },
+        { label: '💼 Arvutikotid', query: 'Näita arvutikotte ja seljakotte' },
         { label: '✏️ Kirjutusvahendid', query: 'Mis pastakad ja pliiatsid teil on?' },
-        { label: '🧳 Thule kohvrid', query: 'Näita Thule kohvreid ja kotte' },
-        { label: '🎒 Kooli stardipakk', query: '__school_wizard__' },
+        { label: '📚 Koolitarbed', query: 'Näita populaarseid koolitarbeid' },
         { label: '🏷️ Soodustused', query: 'Mis soodustused teil praegu on?' },
       ],
       school: [
@@ -1042,13 +1042,21 @@
 
         // Proaktiivne müük: saada lehe kontekst API-sse ja lase chatbotil ise pakkumine teha
         var proactiveMsg = '';
+        var pc = readPageContext();
         if (ctx.type === 'product') {
-          var pc = readPageContext();
-          proactiveMsg = '[PROAKTIIVNE MÜÜK] Klient avas chati toote lehel. Toode: ' + (pc.product_name || 'tundmatu') + ', hind: ' + (pc.product_price || '?') + '. Tee talle proaktiivne müügipakkumine - kiida toodet, paku cross-sell tooteid ja maini et suurema ostukorvi puhul on hea pakkumine!';
+          proactiveMsg = '[PROAKTIIVNE MÜÜK] Klient avas chati TOOTE lehel. Toode: ' + (pc.product_name || 'tundmatu') + ', hind: ' + (pc.product_price || '?') + '. Kiida SEDA konkreetset toodet, räägi selle eelistest ja paku cross-sell tooteid. Ära paku suvalist muud toodet!';
         } else if (ctx.type === 'checkout' || ctx.type === 'cart') {
-          proactiveMsg = '[PROAKTIIVNE MÜÜK] Klient on ostukorvis/kassas! Tee talle pakkumine - maini TAIG10 koodi (10% allahindlust). Loo kiireloomulisust!';
+          var cartInfo = '';
+          if (pc.cart_items && pc.cart_items.length > 0) {
+            cartInfo = ' Ostukorvis: ' + pc.cart_items.map(function(i) { return i.name; }).join(', ') + '.';
+          }
+          proactiveMsg = '[PROAKTIIVNE MÜÜK] Klient on ostukorvis/kassas!' + cartInfo + ' Maini TAIG10 koodi (10% allahindlust). Loo kiireloomulisust!';
         } else if (ctx.type === 'school') {
-          proactiveMsg = '[PROAKTIIVNE MÜÜK] Klient vaatab koolitarbeid. Paku populaarseid koolitarbeid konkreetselt ja maini kooli stardipakki!';
+          proactiveMsg = '[PROAKTIIVNE MÜÜK] Klient vaatab KOOLITARVETE kategooriat. Küsi mis klassis laps käib ja paku konkreetseid tooteid vastavalt. Maini kooli stardipakki!';
+        } else if (ctx.type === 'thule' || ctx.type === 'caselogic') {
+          proactiveMsg = '[PROAKTIIVNE MÜÜK] Klient vaatab ' + ctx.type.toUpperCase() + ' tooteid. Paku selle brändi populaarsemaid tooteid ja räägi brändi kvaliteedist!';
+        } else if (pc.category_name) {
+          proactiveMsg = '[PROAKTIIVNE MÜÜK] Klient sirvib kategooriat: ' + pc.category_name + '. Paku selle kategooria populaarsemaid tooteid konkreetselt!';
         }
         // Saada proaktiivne müügipäring taustale (ei näita "typing")
         if (proactiveMsg) {
