@@ -5,7 +5,7 @@ Keskkonna muutujad: ANTHROPIC_API_KEY, PORT
 import os
 
 # Claude API
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "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")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL = "claude-haiku-4-5-20251001"
 
 # Magento
