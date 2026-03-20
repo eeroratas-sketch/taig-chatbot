@@ -163,16 +163,29 @@ class ChatEngine:
         search_results = self.search.search(user_message, max_results=config.MAX_PRODUCT_CONTEXT)
 
         # 3. Koosta kontekst
+        product_context = ""
+
+        # Lisa äriküsimuse vihje ALATI kui tuvastatud
+        if is_business_query:
+            if any(kw in msg_lower for kw in ['allahindlus', 'soodustus', 'soodsamalt', 'kupong', 'kood', 'odavam']):
+                product_context += "⚡ OLULINE: Klient küsib allahindlust! Maini KINDLASTI kupongikoodi TAIG10 mis annab 10% allahindlust. Ütle: 'Kasutage kassas kupongikoodi TAIG10 ja saate 10% soodsamalt! 🎉'\n\n"
+            elif any(kw in msg_lower for kw in ['tarne', 'kohaletoimetam', 'saatmine', 'pakiautomaat', 'kuller']):
+                product_context += "⚡ Klient küsib tarneinfot. Vasta: Omniva pakiautomaat 3,99€, Omniva kuller 5,99€, DPD pakiautomaat 3,99€. TASUTA tarne alates 49€!\n\n"
+            elif any(kw in msg_lower for kw in ['makse', 'makseviis', 'pangalink', 'kaardimaks', 'järelmaks']):
+                product_context += "⚡ Klient küsib makseviise. Vasta: Pangalink (kõik Eesti pangad), kaardimakse (Visa/Mastercard), järelmaks (Inbank).\n\n"
+            elif any(kw in msg_lower for kw in ['tagastus', 'vahetus', 'reklamatsioon', 'garantii']):
+                product_context += "⚡ Klient küsib tagastuse kohta. Vasta: 14 päeva tagastusõigus, toode peab olema kasutamata ja originaalpakendis. Probleemide korral info@taig.ee.\n\n"
+            elif any(kw in msg_lower for kw in ['hulgi', 'suurem tellimus', 'erikokku']):
+                product_context += "⚡ Klient küsib hulgimüügi kohta. Vasta: 100+ ühiku puhul erikokkulepped, kirjutage info@taig.ee.\n\n"
+
         if search_results:
-            product_context = "LEITUD TOOTED (kasuta neid vastamiseks):\n\n"
+            product_context += "LEITUD TOOTED (kasuta neid vastamiseks):\n\n"
             for i, p in enumerate(search_results, 1):
                 product_context += f"--- Toode {i} ---\n"
                 product_context += _format_product_for_context(p)
                 product_context += "\n\n"
-        elif is_business_query:
-            product_context = "See on äriküsimus (allahindlus/tarne/makse/kontakt). Vasta oma teadmiste põhjal süsteemipromptist. Ära ütle et tooteid pole - see pole tooteotsinguga seotud küsimus.\n"
-        else:
-            product_context = "OTSINGUGA EI LEITUD ÜHTEGI SOBIVAT TOODET. Ütle kliendile ausalt, et hetkel ei leidnud täpset vastet. Paku vaadata kategooriaid lehel taig.ee või küsida teisiti.\n"
+        elif not is_business_query:
+            product_context += "OTSINGUGA EI LEITUD ÜHTEGI SOBIVAT TOODET. Ütle kliendile ausalt, et hetkel ei leidnud täpset vastet. Paku vaadata kategooriaid lehel taig.ee või küsida teisiti.\n"
 
         # 3. Lisa kasutaja sõnum koos kontekstiga
         enriched_message = f"{user_message}\n\n---\n{product_context}"
