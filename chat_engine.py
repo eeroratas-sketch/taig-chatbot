@@ -2,7 +2,10 @@
 Claude AI vestlusmootor - müügiassistent taig.ee jaoks.
 """
 import anthropic
+import json
 import logging
+import os
+import re
 import time
 from datetime import datetime, timedelta
 
@@ -81,6 +84,18 @@ Lühike kirjeldus (1 lause)
 ## Hulgimüük
 - Suurematele tellimustele (100+ ühikut) on võimalik erikokkulepe
 - Suuna: "Suurema tellimuse puhul kirjutage meile info@taig.ee - teeme teile parima pakkumise!"
+
+## Tootekaartide formaat (OLULINE!)
+Kui soovitad konkreetset toodet, lisa ALATI iga toote järel eraldi reale täpselt selles formaadis:
+[PRODUCT:Toote nimi|hind|pilt_url|toote_url]
+See kuvatakse kliendile visuaalse tootekaardina. Kasuta ainult tooteandmetest saadud infot.
+Näide: [PRODUCT:Pentel BK417 pastapliiats|0.21|https://taig.ee/media/catalog/product/bk417.jpg|https://taig.ee/et/pentel-bk417]
+
+## Kooli stardipakk
+Kui klient küsib "stardipakki", "kooli komplekti" või "kooli nimekirja", küsi KOHE:
+1. Mis klassi? (1-4, 5-9 või 10-12)
+2. Mitu last?
+Seejärel koosta terviklik nimekiri meie kataloogist (pliiatsid, pastakad, vihikud, värvid, kustukumm, teritaja, koolipinal, joonlaud jne).
 """
 
 
@@ -94,6 +109,8 @@ def _format_product_for_context(product):
     if product.get('on_sale') and product.get('regular_price'):
         parts.append(f"Tavahind: {product['regular_price']:.2f} EUR (SOODUSTUS!)")
     parts.append(f"Laos: {'Jah ({} tk)'.format(product['qty']) if product['in_stock'] else 'EI - otsas'}")
+    if product.get('in_stock') and product.get('qty', 0) < 5 and product.get('qty', 0) > 0:
+        parts.append(f"[LOW_STOCK:{product['qty']}]")
     if product.get('brand'):
         parts.append(f"Bränd: {product['brand']}")
     if product.get('main_category'):
@@ -141,9 +158,44 @@ class ChatEngine:
         session['last_activity'] = datetime.now()
         return session
 
-    def chat(self, session_id, user_message):
+    def _detect_language(self, text):
+        """Tuvasta keele lihtne heuristika."""
+        # Cyrillic check
+        if re.search(r'[\u0400-\u04FF]', text):
+            return "ru"
+        # Estonian specific chars
+        has_estonian = bool(re.search(r'[äöüõÄÖÜÕ]', text))
+        if has_estonian:
+            return "et"
+        # Finnish specific (ä/ö without õ)
+        if re.search(r'[äöÄÖ]', text) and not re.search(r'[õÕ]', text):
+            # Could be Finnish or Estonian without õ, default to et
+            return "et"
+        # Mostly ASCII - likely English
+        return "en"
+
+    def _log_query(self, session_id, user_message, language):
+        """Logi päring analytics faili."""
+        try:
+            queries_file = os.path.join(config.ANALYTICS_DIR, "queries.jsonl")
+            entry = {
+                "timestamp": datetime.now().isoformat(),
+                "session_id": session_id,
+                "message": user_message[:200],
+                "language": language,
+            }
+            with open(queries_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        except Exception as e:
+            log.warning(f"Päringu logimine ebaõnnestus: {e}")
+
+    def chat(self, session_id, user_message, page_context=None):
         """Töötle kasutaja sõnum ja tagasta vastus."""
         session = self._get_session(session_id)
+
+        # Keele tuvastamine ja logimine
+        language = self._detect_language(user_message)
+        self._log_query(session_id, user_message, language)
 
         # 1. Tuvasta kas on äriküsimus (ei vaja tooteotsinguud)
         msg_lower = user_message.lower()
@@ -187,8 +239,30 @@ class ChatEngine:
         elif not is_business_query:
             product_context += "OTSINGUGA EI LEITUD ÜHTEGI SOBIVAT TOODET. Ütle kliendile ausalt, et hetkel ei leidnud täpset vastet. Paku vaadata kategooriaid lehel taig.ee või küsida teisiti.\n"
 
-        # 3. Lisa kasutaja sõnum koos kontekstiga
-        enriched_message = f"{user_message}\n\n---\n{product_context}"
+        # 3a. Lisa lehe kontekst (page_context)
+        page_context_text = ""
+        if page_context:
+            if page_context.get('product_name'):
+                page_context_text += f"KLIENT VAATAB PRAEGU TOODET: {page_context['product_name']}"
+                if page_context.get('product_sku'):
+                    page_context_text += f" (SKU: {page_context['product_sku']}"
+                    if page_context.get('product_price'):
+                        page_context_text += f", Hind: {page_context['product_price']}€"
+                    page_context_text += ")"
+                page_context_text += ". Kasuta seda infot vastamiseks.\n\n"
+            if page_context.get('cart_items'):
+                items_str = ", ".join(str(item) for item in page_context['cart_items'])
+                page_context_text += f"KLIENDI OSTUKORVIS ON: {items_str}. Paku juurde sobivaid tooteid (cross-sell)!\n\n"
+            if page_context.get('category'):
+                page_context_text += f"KLIENT SIRVIB KATEGOORIAT: {page_context['category']}\n\n"
+
+        # 3b. Kooli stardipaki tuvastamine
+        school_keywords = ['stardipakk', 'kooli komplekt', 'kooli nimekiri', 'koolikomplekt', 'koolitarvete nimekiri']
+        if config.SCHOOL_PACK_ENABLED and any(kw in msg_lower for kw in school_keywords):
+            product_context += "⚡ KOOLI STARDIPAKK! Klient otsib kooli komplekti. Küsi: 1) Mis klassi? (1-4, 5-9, 10-12) 2) Mitu last? Seejärel koosta terviklik nimekiri kataloogist.\n\n"
+
+        # 3c. Lisa kasutaja sõnum koos kontekstiga
+        enriched_message = f"{user_message}\n\n---\n{page_context_text}{product_context}"
 
         # 4. Ehita sõnumite ajalugu
         messages = list(session['messages'])  # koopia

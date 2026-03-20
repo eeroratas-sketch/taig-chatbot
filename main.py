@@ -3,9 +3,11 @@ Taig.ee AI müügiassistendi server.
 Käivita: python main.py
 """
 import asyncio
+import json
 import logging
 import os
 import uuid
+from datetime import datetime
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,6 +54,7 @@ rate_limiter = RateLimiter()
 class ChatRequest(BaseModel):
     session_id: str = ""
     message: str
+    page_context: dict = None  # {type, product_name, product_sku, product_price, product_image, category, cart_items}
 
 
 class ChatResponse(BaseModel):
@@ -82,6 +85,9 @@ async def startup():
     # Initsieeri chat engine
     chat_engine = ChatEngine(search_engine)
 
+    # Loo analytics kaust
+    os.makedirs(config.ANALYTICS_DIR, exist_ok=True)
+
     log.info(f"=== Server valmis portil {config.PORT} ===")
 
 
@@ -108,7 +114,7 @@ async def chat(request: ChatRequest, req: Request):
     if not chat_engine:
         raise HTTPException(status_code=503, detail="Server alles käivitub...")
 
-    result = chat_engine.chat(session_id, message)
+    result = chat_engine.chat(session_id, message, page_context=request.page_context)
 
     return ChatResponse(
         session_id=session_id,
@@ -151,6 +157,61 @@ async def health():
         "status": "ok",
         "stats": stats,
     }
+
+
+@app.post("/api/feedback")
+async def feedback(request: Request):
+    """Salvesta kasutaja tagasiside."""
+    data = await request.json()
+    entry = {
+        "timestamp": datetime.now().isoformat(),
+        "session_id": data.get("session_id"),
+        "rating": data.get("rating"),
+        "message_index": data.get("message_index"),
+    }
+    feedback_file = os.path.join(config.ANALYTICS_DIR, "feedback.jsonl")
+    with open(feedback_file, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry) + "\n")
+    return {"ok": True}
+
+
+@app.get("/api/analytics")
+async def analytics():
+    """Simple analytics."""
+    # Read feedback stats
+    feedback_file = os.path.join(config.ANALYTICS_DIR, "feedback.jsonl")
+    pos = neg = 0
+    if os.path.exists(feedback_file):
+        with open(feedback_file, encoding="utf-8") as f:
+            for line in f:
+                d = json.loads(line)
+                if d.get("rating") == "up":
+                    pos += 1
+                elif d.get("rating") == "down":
+                    neg += 1
+
+    # Read query log stats
+    queries_file = os.path.join(config.ANALYTICS_DIR, "queries.jsonl")
+    total_queries = 0
+    languages = {}
+    if os.path.exists(queries_file):
+        with open(queries_file, encoding="utf-8") as f:
+            for line in f:
+                d = json.loads(line)
+                total_queries += 1
+                lang = d.get("language", "et")
+                languages[lang] = languages.get(lang, 0) + 1
+
+    stats = {}
+    if search_engine:
+        stats['catalog'] = search_engine.get_stats()
+    if chat_engine:
+        stats['chat'] = chat_engine.get_stats()
+
+    stats['feedback'] = {"positive": pos, "negative": neg}
+    stats['languages'] = languages
+    stats['total_logged_queries'] = total_queries
+    return stats
 
 
 # Serve static files (widget)

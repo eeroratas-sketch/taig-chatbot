@@ -20,7 +20,60 @@
   let autoOpenDone = sessionStorage.getItem('taig_auto_opened') === 'true';
   let bubbleDismissed = sessionStorage.getItem('taig_bubble_dismissed') === 'true';
 
-  // === KONTEKSTITUVASTUS ===
+  // === LEHE KONTEKSTI LUGEMINE (DOM) ===
+  function readPageContext() {
+    const path = window.location.pathname.toLowerCase();
+    const context = {
+      url: window.location.href,
+      page_type: 'other',
+    };
+
+    // Toote leht
+    const productMain = document.querySelector('.product-info-main');
+    if (productMain || path.match(/\.html$/)) {
+      context.page_type = 'product';
+      const nameEl = document.querySelector('.product-info-main .page-title, .page-title-wrapper .page-title');
+      if (nameEl) context.product_name = nameEl.textContent.trim();
+      const skuEl = document.querySelector('.product.attribute.sku .value, [itemprop="sku"]');
+      if (skuEl) context.product_sku = skuEl.textContent.trim();
+      const priceEl = document.querySelector('.price-wrapper .price, [data-price-type="finalPrice"] .price');
+      if (priceEl) context.product_price = priceEl.textContent.trim();
+      const imgEl = document.querySelector('.gallery-placeholder img, .product-image-photo');
+      if (imgEl) context.product_image = imgEl.src;
+    }
+
+    // Kategooria leht
+    if (!productMain && document.querySelector('.catalog-category-view, .page-products')) {
+      context.page_type = 'category';
+      const catEl = document.querySelector('.page-title');
+      if (catEl) context.category_name = catEl.textContent.trim();
+    }
+
+    // Ostukorv / kassaleht
+    if (path.includes('/checkout') || path.includes('/cart')) {
+      context.page_type = path.includes('/checkout') ? 'checkout' : 'cart';
+      try {
+        const mageCache = localStorage.getItem('mage-cache-storage');
+        if (mageCache) {
+          const parsed = JSON.parse(mageCache);
+          if (parsed && parsed.cart && parsed.cart.items) {
+            context.cart_items = parsed.cart.items.map(function(item) {
+              return {
+                name: item.product_name,
+                qty: item.qty,
+                price: item.product_price,
+              };
+            });
+            context.cart_total = parsed.cart.subtotalAmount;
+          }
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    return context;
+  }
+
+  // === KONTEKSTITUVASTUS (greetings) ===
   function detectPageContext() {
     const path = window.location.pathname.toLowerCase();
     const title = document.title.toLowerCase();
@@ -58,12 +111,14 @@
         { label: '📚 Koolitarbed', query: 'Näita populaarseid koolitarbeid' },
         { label: '✏️ Kirjutusvahendid', query: 'Mis pastakad ja pliiatsid teil on?' },
         { label: '🧳 Thule kohvrid', query: 'Näita Thule kohvreid ja kotte' },
+        { label: '🎒 Kooli stardipakk', query: '__school_wizard__' },
         { label: '🏷️ Soodustused', query: 'Mis soodustused teil praegu on?' },
       ],
       school: [
         { label: '✏️ Pliiatsid', query: 'Näita pliiatseid ja pastakaid kooli' },
         { label: '🎨 Värvid', query: 'Näita guašše ja akvarellvärve' },
         { label: '📓 Vihikud', query: 'Näita vihikuid' },
+        { label: '🎒 Kooli stardipakk', query: '__school_wizard__' },
         { label: '🏷️ TAIG10 -10%', query: 'Kuidas saan allahindlust?' },
       ],
       office: [
@@ -196,7 +251,7 @@
       bottom: 90px;
       right: 20px;
       width: 380px;
-      height: 540px;
+      height: 560px;
       background: white;
       border-radius: 16px;
       box-shadow: 0 8px 40px rgba(0,0,0,0.18);
@@ -288,6 +343,15 @@
       color: white;
       border-color: #2563eb;
     }
+    .taig-quick-btn.school-wizard-btn {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+      border-color: transparent;
+      font-weight: 600;
+    }
+    .taig-quick-btn.school-wizard-btn:hover {
+      background: linear-gradient(135deg, #d97706, #b45309);
+    }
 
     .taig-msg {
       max-width: 85%;
@@ -315,6 +379,201 @@
     }
     .taig-msg.user a { color: #bfdbfe; }
     .taig-msg strong { font-weight: 600; }
+
+    /* Bot sõnumi konteiner (msg + feedback) */
+    .taig-bot-msg-wrap {
+      align-self: flex-start;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 90%;
+    }
+
+    /* Feedback nupud */
+    .taig-feedback {
+      display: flex;
+      gap: 6px;
+      padding-left: 4px;
+    }
+    .taig-feedback-btn {
+      background: none;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 14px;
+      cursor: pointer;
+      color: #94a3b8;
+      font-family: inherit;
+      transition: all 0.2s;
+      line-height: 1.4;
+    }
+    .taig-feedback-btn:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #475569;
+    }
+    .taig-feedback-btn.voted {
+      background: #f0fdf4;
+      border-color: #86efac;
+      color: #16a34a;
+      cursor: default;
+    }
+    .taig-feedback-btn.voted-down {
+      background: #fef2f2;
+      border-color: #fca5a5;
+      color: #dc2626;
+    }
+
+    /* Toote kaardid */
+    .taig-products-row {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 4px 2px 8px 2px;
+      align-self: flex-start;
+      max-width: 100%;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+    }
+    .taig-products-row::-webkit-scrollbar {
+      height: 4px;
+    }
+    .taig-products-row::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .taig-products-row::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 2px;
+    }
+    .taig-product-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px;
+      min-width: 150px;
+      max-width: 160px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .taig-product-card:hover {
+      box-shadow: 0 4px 16px rgba(37,99,235,0.15);
+      transform: translateY(-2px);
+    }
+    .taig-product-img {
+      width: 100%;
+      height: 80px;
+      object-fit: contain;
+      border-radius: 6px;
+      background: #f8fafc;
+    }
+    .taig-product-img-placeholder {
+      width: 100%;
+      height: 80px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+    }
+    .taig-product-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1e293b;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .taig-product-price {
+      font-size: 13px;
+      font-weight: 700;
+      color: #2563eb;
+    }
+    .taig-product-btn {
+      display: block;
+      text-align: center;
+      background: linear-gradient(135deg, #2563eb, #1e40af);
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      transition: opacity 0.2s;
+      font-family: inherit;
+    }
+    .taig-product-btn:hover {
+      opacity: 0.85;
+      color: white;
+      text-decoration: none;
+    }
+
+    /* Low stock badge */
+    .taig-low-stock {
+      display: inline-block;
+      background: #ef4444;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 6px;
+      vertical-align: middle;
+      animation: taig-stock-pulse 2s infinite;
+    }
+    @keyframes taig-stock-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Kooli stardipakk viisard */
+    .taig-wizard {
+      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      border: 1px solid #fbbf24;
+      border-radius: 12px;
+      padding: 12px;
+      align-self: flex-start;
+      max-width: 90%;
+    }
+    .taig-wizard-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: #92400e;
+      margin-bottom: 8px;
+    }
+    .taig-wizard-question {
+      font-size: 13px;
+      color: #78350f;
+      margin-bottom: 8px;
+    }
+    .taig-wizard-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .taig-wizard-opt {
+      background: white;
+      border: 1px solid #fbbf24;
+      border-radius: 16px;
+      padding: 5px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      color: #92400e;
+      font-family: inherit;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .taig-wizard-opt:hover {
+      background: #f59e0b;
+      color: white;
+      border-color: #f59e0b;
+    }
 
     .taig-typing {
       align-self: flex-start;
@@ -394,8 +653,157 @@
       }
       #taig-chat-btn { bottom: 16px; right: 16px; }
       #taig-chat-bubble { bottom: 84px; right: 16px; max-width: 220px; }
+      .taig-product-card { min-width: 130px; max-width: 140px; }
     }
   `;
+
+  // === TOOTE KAARTIDE PARSIMINE ===
+  // Formaat: [PRODUCT:nimi|hind|pilt_url|toote_url]
+  function parseProducts(text) {
+    const products = [];
+    const regex = /\[PRODUCT:([^\]]+)\]/g;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      const parts = match[1].split('|');
+      if (parts.length >= 2) {
+        products.push({
+          name: parts[0] || '',
+          price: parts[1] || '',
+          image: parts[2] || '',
+          url: parts[3] || '',
+          raw: match[0],
+        });
+      }
+    }
+    return products;
+  }
+
+  // Eemalda toote tag tekstist
+  function stripProductTags(text) {
+    return text.replace(/\[PRODUCT:[^\]]+\]/g, '').trim();
+  }
+
+  // Parsi [LOW_STOCK:N] tag
+  function parseLowStock(text) {
+    const match = text.match(/\[LOW_STOCK:(\d+)\]/);
+    return match ? parseInt(match[1], 10) : null;
+  }
+
+  function stripLowStockTag(text) {
+    return text.replace(/\[LOW_STOCK:\d+\]/g, '').trim();
+  }
+
+  // Parsi [IMG:url] (lihtne pildi kuvamine teksti sees)
+  function parseImgTags(text) {
+    return text.replace(/\[IMG:([^\]]+)\]/g, '<img src="$1" style="max-width:100%;border-radius:8px;margin-top:6px;display:block;" alt="Toote pilt">');
+  }
+
+  // === TOOTE KAARDI RENDERDAMINE ===
+  function renderProductCards(products) {
+    const row = document.createElement('div');
+    row.className = 'taig-products-row';
+
+    products.forEach(function(p) {
+      const card = document.createElement('div');
+      card.className = 'taig-product-card';
+
+      // Pilt
+      if (p.image) {
+        const img = document.createElement('img');
+        img.className = 'taig-product-img';
+        img.src = p.image;
+        img.alt = p.name;
+        img.onerror = function() {
+          const ph = document.createElement('div');
+          ph.className = 'taig-product-img-placeholder';
+          ph.textContent = '🛍️';
+          img.parentNode.replaceChild(ph, img);
+        };
+        card.appendChild(img);
+      } else {
+        const ph = document.createElement('div');
+        ph.className = 'taig-product-img-placeholder';
+        ph.textContent = '🛍️';
+        card.appendChild(ph);
+      }
+
+      // Nimi
+      const name = document.createElement('div');
+      name.className = 'taig-product-name';
+      name.textContent = p.name;
+      card.appendChild(name);
+
+      // Hind
+      if (p.price) {
+        const price = document.createElement('div');
+        price.className = 'taig-product-price';
+        price.textContent = p.price;
+        card.appendChild(price);
+      }
+
+      // Nupp
+      if (p.url) {
+        const btn = document.createElement('a');
+        btn.className = 'taig-product-btn';
+        btn.href = p.url;
+        btn.target = '_blank';
+        btn.rel = 'noopener';
+        btn.textContent = 'Vaata →';
+        card.appendChild(btn);
+      }
+
+      row.appendChild(card);
+    });
+
+    return row;
+  }
+
+  // === FEEDBACK ===
+  function addFeedbackButtons(msgId) {
+    const wrap = document.createElement('div');
+    wrap.className = 'taig-feedback';
+
+    const upBtn = document.createElement('button');
+    upBtn.className = 'taig-feedback-btn';
+    upBtn.title = 'Kasulik vastus';
+    upBtn.textContent = '👍';
+
+    const downBtn = document.createElement('button');
+    downBtn.className = 'taig-feedback-btn';
+    downBtn.title = 'Vastus ei aidanud';
+    downBtn.textContent = '👎';
+
+    function sendFeedback(score) {
+      upBtn.disabled = true;
+      downBtn.disabled = true;
+      upBtn.classList.remove('voted', 'voted-down');
+      downBtn.classList.remove('voted', 'voted-down');
+      if (score > 0) {
+        upBtn.classList.add('voted');
+        upBtn.textContent = '👍 Aitäh!';
+      } else {
+        downBtn.classList.add('voted', 'voted-down');
+        downBtn.textContent = '👎 Täname!';
+      }
+
+      fetch(API_URL + '/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          message_id: msgId,
+          score: score,
+        }),
+      }).catch(function(e) { /* ignore */ });
+    }
+
+    upBtn.onclick = function() { sendFeedback(1); };
+    downBtn.onclick = function() { sendFeedback(-1); };
+
+    wrap.appendChild(upBtn);
+    wrap.appendChild(downBtn);
+    return wrap;
+  }
 
   // === HTML ===
   function createWidget() {
@@ -504,7 +912,7 @@
       const messages = document.getElementById('taig-messages');
       if (messages.children.length === 0) {
         const ctx = detectPageContext();
-        addMessage(ctx.greeting, 'bot');
+        addBotMessage(ctx.greeting);
         addQuickActions(ctx.type);
       }
 
@@ -516,10 +924,66 @@
     }
   }
 
+  // Sõnumi ID counter
+  let msgCounter = 0;
+
+  function addBotMessage(text) {
+    const messages = document.getElementById('taig-messages');
+    const msgId = 'taig-msg-' + (++msgCounter);
+
+    // Parsi spetsiaalsed tagid
+    const products = parseProducts(text);
+    const lowStock = parseLowStock(text);
+    let cleanText = stripProductTags(text);
+    cleanText = stripLowStockTag(cleanText);
+
+    // Koosta HTML teksti jaoks
+    let html = cleanText
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/\n/g, '<br>');
+
+    // [IMG:url] tagid
+    html = parseImgTags(html);
+
+    // Low stock badge
+    if (lowStock !== null) {
+      html += ' <span class="taig-low-stock">Ainult ' + lowStock + ' tk!</span>';
+    }
+
+    // Loo wrapper (tekst + feedback)
+    const wrap = document.createElement('div');
+    wrap.className = 'taig-bot-msg-wrap';
+    wrap.id = msgId;
+
+    const msgEl = document.createElement('div');
+    msgEl.className = 'taig-msg bot';
+    msgEl.innerHTML = html;
+    wrap.appendChild(msgEl);
+
+    // Feedback nupud
+    const feedbackEl = addFeedbackButtons(msgId);
+    wrap.appendChild(feedbackEl);
+
+    messages.appendChild(wrap);
+
+    // Toote kaardid (horisontaalne rida)
+    if (products.length > 0) {
+      const cardRow = renderProductCards(products);
+      messages.appendChild(cardRow);
+    }
+
+    messages.scrollTop = messages.scrollHeight;
+  }
+
   function addMessage(text, type) {
+    if (type === 'bot') {
+      addBotMessage(text);
+      return;
+    }
     const messages = document.getElementById('taig-messages');
     const msg = document.createElement('div');
-    msg.className = `taig-msg ${type}`;
+    msg.className = 'taig-msg user';
 
     let html = text
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -540,19 +1004,98 @@
     actions.forEach(function(action) {
       const btn = document.createElement('button');
       btn.className = 'taig-quick-btn';
+      if (action.query === '__school_wizard__') {
+        btn.classList.add('school-wizard-btn');
+      }
       btn.textContent = action.label;
       btn.onclick = function() {
-        // Eemalda quick-actions pärast klõpsu
         wrap.remove();
-        // Simuleeri sõnumi saatmist
-        document.getElementById('taig-input').value = action.query;
-        window._taigSend();
+        if (action.query === '__school_wizard__') {
+          startSchoolWizard();
+        } else {
+          document.getElementById('taig-input').value = action.query;
+          window._taigSend();
+        }
       };
       wrap.appendChild(btn);
     });
 
     messages.appendChild(wrap);
     messages.scrollTop = messages.scrollHeight;
+  }
+
+  // === KOOLI STARDIPAKK VIISARD ===
+  const schoolWizardSteps = [
+    {
+      question: 'Mis klassiga on tegu?',
+      options: ['1.-3. klass', '4.-6. klass', '7.-9. klass', '10.-12. klass'],
+    },
+    {
+      question: 'Mitu last läheb kooli?',
+      options: ['1 laps', '2 last', '3+ last'],
+    },
+    {
+      question: 'Mis on eelarve koolitarvetele?',
+      options: ['Kuni 20€', '20-50€', '50-100€', '100€+'],
+    },
+  ];
+
+  let wizardAnswers = [];
+  let wizardStep = 0;
+
+  function startSchoolWizard() {
+    wizardAnswers = [];
+    wizardStep = 0;
+    showWizardStep();
+  }
+
+  function showWizardStep() {
+    const messages = document.getElementById('taig-messages');
+    const step = schoolWizardSteps[wizardStep];
+
+    const wizardEl = document.createElement('div');
+    wizardEl.className = 'taig-wizard';
+
+    const title = document.createElement('div');
+    title.className = 'taig-wizard-title';
+    title.textContent = '🎒 Kooli stardipakk ' + (wizardStep + 1) + '/' + schoolWizardSteps.length;
+    wizardEl.appendChild(title);
+
+    const question = document.createElement('div');
+    question.className = 'taig-wizard-question';
+    question.textContent = step.question;
+    wizardEl.appendChild(question);
+
+    const optWrap = document.createElement('div');
+    optWrap.className = 'taig-wizard-options';
+
+    step.options.forEach(function(opt) {
+      const optBtn = document.createElement('button');
+      optBtn.className = 'taig-wizard-opt';
+      optBtn.textContent = opt;
+      optBtn.onclick = function() {
+        wizardAnswers.push(opt);
+        wizardEl.remove();
+
+        if (wizardStep < schoolWizardSteps.length - 1) {
+          wizardStep++;
+          showWizardStep();
+        } else {
+          finishWizard();
+        }
+      };
+      optWrap.appendChild(optBtn);
+    });
+
+    wizardEl.appendChild(optWrap);
+    messages.appendChild(wizardEl);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function finishWizard() {
+    const query = 'Soovi leida kooli stardipakk: ' + wizardAnswers[0] + ' õpilasele, ' + wizardAnswers[1] + ', eelarve ' + wizardAnswers[2] + '. Paku sobivaid koolitarbeid.';
+    addMessage(query, 'user');
+    sendToAPI(query);
   }
 
   function showTyping(show) {
@@ -566,7 +1109,54 @@
     }
   }
 
-  window._taigSend = async function() {
+  // === API SAATMINE ===
+  async function sendToAPI(message) {
+    if (isLoading) return;
+    isLoading = true;
+    document.getElementById('taig-send').disabled = true;
+    showTyping(true);
+
+    const pageContext = readPageContext();
+
+    try {
+      const resp = await fetch(API_URL + '/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          message: message,
+          page_context: pageContext,
+        }),
+      });
+
+      if (resp.status === 429) {
+        addBotMessage('Liiga palju päringuid. Palun oodake natuke. 🙏');
+        return;
+      }
+
+      if (!resp.ok) {
+        throw new Error('HTTP ' + resp.status);
+      }
+
+      const data = await resp.json();
+
+      sessionId = data.session_id;
+      localStorage.setItem('taig_chat_session', sessionId);
+
+      addBotMessage(data.message);
+
+    } catch (err) {
+      console.error('Taig chatbot error:', err);
+      addBotMessage('Vabandust, tekkis ühenduse viga. Palun proovige uuesti! 🔄');
+    } finally {
+      isLoading = false;
+      document.getElementById('taig-send').disabled = false;
+      showTyping(false);
+      document.getElementById('taig-input').focus();
+    }
+  }
+
+  window._taigSend = function() {
     if (isLoading) return;
 
     const input = document.getElementById('taig-input');
@@ -575,45 +1165,7 @@
 
     addMessage(message, 'user');
     input.value = '';
-    isLoading = true;
-    document.getElementById('taig-send').disabled = true;
-    showTyping(true);
-
-    try {
-      const resp = await fetch(`${API_URL}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: sessionId,
-          message: message,
-        }),
-      });
-
-      if (resp.status === 429) {
-        addMessage('Liiga palju päringuid. Palun oodake natuke. 🙏', 'bot');
-        return;
-      }
-
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
-      }
-
-      const data = await resp.json();
-
-      sessionId = data.session_id;
-      localStorage.setItem('taig_chat_session', sessionId);
-
-      addMessage(data.message, 'bot');
-
-    } catch (err) {
-      console.error('Taig chatbot error:', err);
-      addMessage('Vabandust, tekkis ühenduse viga. Palun proovige uuesti! 🔄', 'bot');
-    } finally {
-      isLoading = false;
-      document.getElementById('taig-send').disabled = false;
-      showTyping(false);
-      document.getElementById('taig-input').focus();
-    }
+    sendToAPI(message);
   };
 
   // === INIT ===
