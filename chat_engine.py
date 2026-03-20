@@ -299,7 +299,7 @@ class ChatEngine:
         if is_business_query:
             if any(kw in msg_lower for kw in ['allahindlus', 'soodustus', 'soodsamalt', 'kupong', 'kood', 'odavam', 'kallis', 'liiga kallis', 'odavamalt', 'discount', 'cheaper', 'скидка', 'дешевле', 'atlaide', 'nuolaida']):
                 # Vaata vestluse ajalugu - kas TAIG10 on juba mainitud?
-                history_text = ' '.join([m.get('content', '') for m in history[-6:]]).lower()
+                history_text = ' '.join([m.get('content', '') for m in session['history'][-6:]]).lower()
                 if 'taig15' in history_text:
                     product_context += "⚡ KLIENT KAUPLEB EDASI! TAIG15 (15%) on JUBA pakutud - see ON meie PARIM pakkumine. Ütle sõbralikult aga kindlalt, et rohkem allahindlust pole võimalik. Rõhuta et 15% on VÄGA hea pakkumine! Kui nad ikka ei osta, soovita kirjutada veebipood@taig.ee hulgipakkumise jaoks.\n\n"
                 elif 'taig10' in history_text:
