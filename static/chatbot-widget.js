@@ -1039,6 +1039,21 @@
         const ctx = detectPageContext();
         addBotMessage(ctx.greeting);
         addQuickActions(ctx.type);
+
+        // Proaktiivne müük: saada lehe kontekst API-sse ja lase chatbotil ise pakkumine teha
+        var proactiveMsg = '';
+        if (ctx.type === 'product') {
+          var pc = readPageContext();
+          proactiveMsg = '[PROAKTIIVNE MÜÜK] Klient avas chati toote lehel. Toode: ' + (pc.product_name || 'tundmatu') + ', hind: ' + (pc.product_price || '?') + '. Tee talle proaktiivne müügipakkumine - kiida toodet, paku cross-sell tooteid ja maini et suurema ostukorvi puhul on hea pakkumine!';
+        } else if (ctx.type === 'checkout' || ctx.type === 'cart') {
+          proactiveMsg = '[PROAKTIIVNE MÜÜK] Klient on ostukorvis/kassas! Tee talle pakkumine - maini TAIG10 koodi (10% allahindlust). Loo kiireloomulisust!';
+        } else if (ctx.type === 'school') {
+          proactiveMsg = '[PROAKTIIVNE MÜÜK] Klient vaatab koolitarbeid. Paku populaarseid koolitarbeid konkreetselt ja maini kooli stardipakki!';
+        }
+        // Saada proaktiivne müügipäring taustale (ei näita "typing")
+        if (proactiveMsg) {
+          setTimeout(function() { sendToAPI(proactiveMsg); }, 2000);
+        }
       }
 
       autoOpenDone = true;
