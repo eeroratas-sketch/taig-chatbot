@@ -117,6 +117,22 @@ async def chat(request: ChatRequest, req: Request):
     )
 
 
+@app.get("/api/debug-search")
+async def debug_search(q: str = "test"):
+    """Debug otsing."""
+    from product_search import tokenize, _expand_query
+    tokens = tokenize(q)
+    expanded = _expand_query(tokens)
+    results = search_engine.search(q, max_results=3) if search_engine else []
+    return {
+        "query": q,
+        "tokens": tokens,
+        "expanded": list(expanded)[:20],
+        "results_count": len(results),
+        "results": [{"sku": r["sku"], "name": r["name"]} for r in results],
+    }
+
+
 @app.post("/api/session")
 async def create_session():
     """Loo uus sessioon."""
