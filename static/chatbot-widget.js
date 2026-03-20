@@ -638,6 +638,30 @@
       color: white;
       text-decoration: none;
     }
+    .taig-cart-btn {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      border: none;
+      cursor: pointer;
+      color: white;
+    }
+    .taig-cart-btn:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+    .taig-add-all-btn {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      font-family: inherit;
+    }
+    .taig-add-all-btn:hover { opacity: 0.85; }
+    .taig-add-all-btn:disabled { opacity: 0.6; cursor: wait; }
 
     /* Low stock badge */
     .taig-low-stock {
@@ -783,7 +807,7 @@
   `;
 
   // === TOOTE KAARTIDE PARSIMINE ===
-  // Formaat: [PRODUCT:nimi|hind|pilt_url|toote_url]
+  // Formaat: [PRODUCT:nimi|hind|pilt_url|toote_url|sku]
   function parseProducts(text) {
     const products = [];
     const regex = /\[PRODUCT:([^\]]+)\]/g;
@@ -796,11 +820,160 @@
           price: parts[1] || '',
           image: parts[2] || '',
           url: parts[3] || '',
+          sku: parts[4] || '',
           raw: match[0],
         });
       }
     }
     return products;
+  }
+
+  // === OSTUKORVI LISAMINE (Magento 2) ===
+  function addToCart(sku, qty, btnEl) {
+    if (!sku) return;
+    qty = qty || 1;
+
+    // Näita loading olekut
+    var origText = btnEl.textContent;
+    btnEl.textContent = '⏳ Lisan...';
+    btnEl.disabled = true;
+
+    // Magento form_key
+    var formKey = '';
+    try {
+      var cookies = document.cookie.split(';');
+      for (var i = 0; i < cookies.length; i++) {
+        var c = cookies[i].trim();
+        if (c.indexOf('form_key=') === 0) {
+          formKey = c.substring('form_key='.length);
+        }
+      }
+      if (!formKey && window.FORM_KEY) formKey = window.FORM_KEY;
+      if (!formKey) {
+        var fkInput = document.querySelector('input[name="form_key"]');
+        if (fkInput) formKey = fkInput.value;
+      }
+    } catch(e) {}
+
+    // Kasuta Magento customer-data REST API (guest)
+    // Kõigepealt otsi toote ID SKU järgi, siis lisa korvi
+    var baseUrl = window.location.origin;
+
+    // Variant 1: Kasuta Magento add-to-cart URL-i (lihtsam ja töökindlam)
+    fetch(baseUrl + '/rest/V1/products/' + encodeURIComponent(sku), {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(resp) { return resp.json(); })
+    .then(function(product) {
+      var productId = product.id;
+      if (!productId) throw new Error('Toote ID ei leitud');
+
+      // Lisa ostukorvi kasutades Magento standard URL
+      var formData = new FormData();
+      formData.append('product', productId);
+      formData.append('qty', qty);
+      formData.append('form_key', formKey);
+
+      return fetch(baseUrl + '/checkout/cart/add/product/' + productId + '/', {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+      });
+    })
+    .then(function(resp) {
+      if (resp.ok || resp.redirected) {
+        btnEl.textContent = '✅ Lisatud!';
+        btnEl.style.background = '#16a34a';
+
+        // Uuenda Magento mini-cart
+        try {
+          require(['Magento_Customer/js/customer-data'], function(customerData) {
+            var sections = ['cart'];
+            customerData.invalidate(sections);
+            customerData.reload(sections, true);
+          });
+        } catch(e) {
+          // Fallback: reload sections via AJAX
+          fetch(baseUrl + '/customer/section/load/?sections=cart&force_new_section_timestamp=true', {
+            credentials: 'same-origin'
+          }).catch(function(){});
+        }
+
+        setTimeout(function() {
+          btnEl.textContent = '🛒 Lisa korvi';
+          btnEl.style.background = '';
+          btnEl.disabled = false;
+        }, 2000);
+      } else {
+        throw new Error('HTTP ' + resp.status);
+      }
+    })
+    .catch(function(err) {
+      console.error('Ostukorvi lisamine ebaõnnestus:', err);
+      btnEl.textContent = '❌ Viga';
+      btnEl.style.background = '#dc2626';
+      setTimeout(function() {
+        btnEl.textContent = origText;
+        btnEl.style.background = '';
+        btnEl.disabled = false;
+      }, 2000);
+    });
+  }
+
+  function addMultipleToCart(products, btnEl) {
+    var origText = btnEl.textContent;
+    btnEl.textContent = '⏳ Lisan ' + products.length + ' toodet...';
+    btnEl.disabled = true;
+    var added = 0;
+    var errors = 0;
+
+    products.forEach(function(p, idx) {
+      if (!p.sku) { errors++; return; }
+      setTimeout(function() {
+        var baseUrl = window.location.origin;
+        fetch(baseUrl + '/rest/V1/products/' + encodeURIComponent(p.sku), {
+          headers: { 'Content-Type': 'application/json' },
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(product) {
+          var formKey = window.FORM_KEY || '';
+          try {
+            var fkInput = document.querySelector('input[name="form_key"]');
+            if (fkInput) formKey = fkInput.value;
+          } catch(e) {}
+          var fd = new FormData();
+          fd.append('product', product.id);
+          fd.append('qty', 1);
+          fd.append('form_key', formKey);
+          return fetch(baseUrl + '/checkout/cart/add/product/' + product.id + '/', {
+            method: 'POST', body: fd, credentials: 'same-origin'
+          });
+        })
+        .then(function() { added++; })
+        .catch(function() { errors++; })
+        .finally(function() {
+          if (added + errors >= products.filter(function(x){return x.sku;}).length) {
+            btnEl.textContent = '✅ ' + added + ' toodet lisatud!';
+            btnEl.style.background = '#16a34a';
+            try {
+              require(['Magento_Customer/js/customer-data'], function(cd) {
+                cd.invalidate(['cart']); cd.reload(['cart'], true);
+              });
+            } catch(e) {
+              fetch(baseUrl + '/customer/section/load/?sections=cart&force_new_section_timestamp=true', {
+                credentials: 'same-origin'
+              }).catch(function(){});
+            }
+            setTimeout(function() {
+              btnEl.textContent = origText;
+              btnEl.style.background = '';
+              btnEl.disabled = false;
+            }, 3000);
+          }
+        });
+      }, idx * 500); // 500ms vahe iga toote vahel, et mitte üle koormata
+    });
   }
 
   // Eemalda toote tag tekstist
@@ -866,19 +1039,51 @@
         card.appendChild(price);
       }
 
-      // Nupp
+      // Nupud
+      const btnWrap = document.createElement('div');
+      btnWrap.style.cssText = 'display:flex; flex-direction:column; gap:4px; margin-top:auto;';
+
       if (p.url) {
-        const btn = document.createElement('a');
-        btn.className = 'taig-product-btn';
-        btn.href = p.url;
-        btn.target = '_blank';
-        btn.rel = 'noopener';
-        btn.textContent = 'Vaata →';
-        card.appendChild(btn);
+        const viewBtn = document.createElement('a');
+        viewBtn.className = 'taig-product-btn';
+        viewBtn.href = p.url;
+        viewBtn.target = '_blank';
+        viewBtn.rel = 'noopener';
+        viewBtn.textContent = 'Vaata →';
+        btnWrap.appendChild(viewBtn);
       }
 
+      if (p.sku) {
+        const cartBtn = document.createElement('button');
+        cartBtn.className = 'taig-product-btn taig-cart-btn';
+        cartBtn.textContent = '🛒 Lisa korvi';
+        cartBtn.setAttribute('data-sku', p.sku);
+        cartBtn.onclick = function(e) {
+          e.preventDefault();
+          addToCart(p.sku, 1, cartBtn);
+        };
+        btnWrap.appendChild(cartBtn);
+      }
+
+      card.appendChild(btnWrap);
       row.appendChild(card);
     });
+
+    // "Lisa kõik korvi" nupp kui rohkem kui 1 toodet
+    var productsWithSku = products.filter(function(p) { return p.sku; });
+    if (productsWithSku.length > 1) {
+      const addAllBtn = document.createElement('button');
+      addAllBtn.className = 'taig-add-all-btn';
+      addAllBtn.textContent = '🛒 Lisa kõik ' + productsWithSku.length + ' toodet korvi';
+      addAllBtn.onclick = function(e) {
+        e.preventDefault();
+        addMultipleToCart(productsWithSku, addAllBtn);
+      };
+      const addAllWrap = document.createElement('div');
+      addAllWrap.style.cssText = 'width:100%; margin-top:8px; text-align:center;';
+      addAllWrap.appendChild(addAllBtn);
+      row.appendChild(addAllWrap);
+    }
 
     return row;
   }
