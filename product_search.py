@@ -17,7 +17,10 @@ STOP_WORDS = {
     'aga', 'kuid', 'sest', 'ning',
     'the', 'and', 'or', 'for', 'with', 'from', 'this', 'that',
     'mida', 'millist', 'soovita', 'otsin', 'tahan', 'vajan',
+    'soovin', 'osta', 'ostan', 'osta', 'ostma', 'palun',
+    'mulle', 'endale', 'lapsele', 'kooli', 'kontorisse',
     'head', 'parimat', 'sobivat', 'odavat', 'soodsat',
+    'soovitan', 'näita', 'näidata', 'leia', 'otsi',
 }
 
 # Sünonüümid eesti-inglise segakeelele
@@ -39,6 +42,24 @@ SYNONYMS = {
     'mapid': ['mapp', 'mapid', 'kaust', 'folder'],
     'pinal': ['pinal', 'pinalid', 'pencil case'],
     'joogivesi': ['joogipudel', 'pudel', 'bottle', 'water'],
+    'koolitarbed': ['koolitarbed', 'koolitarbeid', 'koolikaubad', 'koolikaupu', 'kooliasjad',
+                    'koolitarve', 'koolitarvete', 'school supplies'],
+    'koolikaubad': ['koolikaubad', 'koolitarbed', 'koolitarbeid', 'koolikaupu', 'kooliasjad',
+                    'kooliasjadega', 'school supplies'],
+    'kontoritarbed': ['kontoritarbed', 'kontoritarbeid', 'kontorikaubad', 'kontorikaupu',
+                      'kontoriasjad', 'kontoritarvete', 'bürootarbed', 'office supplies'],
+    'kirjutusvahend': ['kirjutusvahend', 'kirjutusvahendid', 'kirjutusvahendeid', 'writing'],
+    'teritaja': ['teritaja', 'teritajad', 'teritajat', 'sharpener'],
+    'joonlaud': ['joonlaud', 'joonlauad', 'ruler'],
+    'liim': ['liim', 'liimipulk', 'liimipulgad', 'glue'],
+    'kleeplint': ['kleeplint', 'teip', 'tape', 'scotch'],
+    'värv': ['värv', 'värvid', 'värve', 'paint', 'guašš', 'akvarellid', 'akvarellvärv'],
+    'pintsel': ['pintsel', 'pintslid', 'brush'],
+    'viltpliiats': ['viltpliiats', 'viltpliiatsid', 'vildikas', 'vildikad', 'felt pen', 'marker'],
+    'klammerdaja': ['klammerdaja', 'klamber', 'klambrid', 'stapler'],
+    'augustaja': ['augustaja', 'auguraud', 'punch', 'hole punch'],
+    'thule': ['thule'],
+    'case logic': ['case', 'logic', 'caselogic'],
 }
 
 
@@ -132,11 +153,20 @@ class ProductSearch:
         # Skoorima
         scores = {}
         for token in expanded:
+            # Täpne vaste
             if token in self.index:
                 for product_idx, weight in self.index[token]:
-                    # Originaaltokeni kaal on suurem kui sünonüümi oma
                     actual_weight = weight if token in tokens else weight * 0.5
                     scores[product_idx] = scores.get(product_idx, 0) + actual_weight
+
+        # Tüve-otsing originaaltokenitele, mis ei andnud tulemust
+        if not scores and len(tokens) > 0:
+            for token in tokens:
+                stem = token[:5] if len(token) >= 5 else token
+                for word, entries in self.index.items():
+                    if word.startswith(stem) or stem.startswith(word[:5] if len(word) >= 5 else word):
+                        for product_idx, weight in entries:
+                            scores[product_idx] = scores.get(product_idx, 0) + weight * 0.3
 
         # Boonused
         for idx, score in list(scores.items()):
