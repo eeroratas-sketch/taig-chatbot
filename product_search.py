@@ -21,6 +21,14 @@ STOP_WORDS = {
     'mulle', 'endale', 'lapsele', 'kooli', 'kontorisse',
     'head', 'parimat', 'sobivat', 'odavat', 'soodsat',
     'soovitan', 'näita', 'näidata', 'leia', 'otsi',
+    # Vene stop-sõnad
+    'вас', 'есть', 'ли', 'мне', 'для', 'что', 'как', 'это', 'где', 'нет',
+    'хочу', 'купить', 'нужно', 'нужна', 'нужны', 'можно', 'пожалуйста',
+    # Soome stop-sõnad
+    'onko', 'teillä', 'minulle', 'haluan', 'ostaa', 'tarvitsen',
+    # Inglise stop-sõnad (laiendatud)
+    'have', 'you', 'your', 'any', 'some', 'looking', 'need', 'want', 'buy',
+    'can', 'could', 'please', 'show', 'find', 'search', 'get', 'like',
 }
 
 # Sünonüümid eesti-inglise segakeelele
@@ -60,12 +68,36 @@ SYNONYMS = {
     'augustaja': ['augustaja', 'auguraud', 'punch', 'hole punch'],
     'thule': ['thule'],
     'case logic': ['case', 'logic', 'caselogic'],
+    # Vene keele sünonüümid
+    'ручка': ['ручка', 'ручки', 'pastakas', 'pastakad', 'pen'],
+    'карандаш': ['карандаш', 'карандаши', 'pliiats', 'pliiatsid', 'pencil'],
+    'ножницы': ['ножницы', 'käärid', 'scissors'],
+    'клей': ['клей', 'liim', 'liimipulk', 'glue'],
+    'ластик': ['ластик', 'резинка', 'kustukumm', 'eraser'],
+    'пенал': ['пенал', 'pinal', 'pencil case'],
+    'тетрадь': ['тетрадь', 'тетради', 'vihik', 'kaustik', 'notebook'],
+    'краски': ['краски', 'гуашь', 'акварель', 'värv', 'värvid', 'guašš', 'akvarellid'],
+    'кисть': ['кисть', 'кисточка', 'pintsel', 'brush'],
+    'линейка': ['линейка', 'joonlaud', 'ruler'],
+    'маркер': ['маркер', 'маркеры', 'marker', 'markerid', 'highlighter'],
+    'рюкзак': ['рюкзак', 'seljakott', 'backpack'],
+    'чемодан': ['чемодан', 'kohver', 'suitcase', 'luggage'],
+    'школьные': ['школьные', 'школьных', 'принадлежности', 'koolitarbed', 'koolikaubad', 'school supplies'],
+    'канцтовары': ['канцтовары', 'канцелярия', 'kontoritarbed', 'office supplies'],
+    # Soome keele sünonüümid
+    'kynä': ['kynä', 'kynät', 'pastakas', 'pen'],
+    'lyijykynä': ['lyijykynä', 'pliiats', 'pencil'],
+    'sakset': ['sakset', 'käärid', 'scissors'],
+    'liima': ['liima', 'liim', 'glue'],
+    'reppu': ['reppu', 'seljakott', 'backpack'],
+    'matkalaukku': ['matkalaukku', 'kohver', 'suitcase'],
+    'koulutarvikkeet': ['koulutarvikkeet', 'koolitarbed', 'school supplies'],
 }
 
 
 def tokenize(text):
     """Tükelda tekst sõnadeks, eemalda stoppsõnad."""
-    words = re.findall(r'[a-züõäöšž\d]+', text.lower())
+    words = re.findall(r'[a-züõäöšžа-яёА-ЯЁäöåéèêëïîôûüùç\d]+', text.lower())
     return [w for w in words if w not in STOP_WORDS and len(w) > 1]
 
 
