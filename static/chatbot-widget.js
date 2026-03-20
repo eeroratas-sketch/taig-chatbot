@@ -6,12 +6,102 @@
   const AUTO_URL = SCRIPT_SRC ? SCRIPT_SRC.replace(/\/static\/chatbot-widget\.js.*$/, '').replace(/\/widget\.js.*$/, '') : '';
   const API_URL = window.TAIG_CHATBOT_URL || AUTO_URL || 'http://localhost:8100';
   const WIDGET_TITLE = 'Taig Abi';
-  const PLACEHOLDER = 'Kirjuta siia...';
 
   // Auto-open seadistus
   const AUTO_OPEN_DELAY = 15000; // 15 sek pärast lehe laadimist
   const BUBBLE_DELAY = 5000;     // 5 sek pärast ilmub teate-mull
   const BUBBLE_DISMISS_TIME = 12000; // Mull kaob 12 sek pärast
+
+  // === BRAUSERI KEELE TUVASTAMINE ===
+  function detectVisitorLang() {
+    const lang = (navigator.language || navigator.userLanguage || 'et').toLowerCase();
+    if (lang.startsWith('ru')) return 'ru';
+    if (lang.startsWith('fi')) return 'fi';
+    if (lang.startsWith('lv')) return 'lv';
+    if (lang.startsWith('lt')) return 'lt';
+    if (lang.startsWith('en')) return 'en';
+    if (lang.startsWith('et')) return 'et';
+    // Muu keel → inglise
+    return 'en';
+  }
+
+  const VISITOR_LANG = detectVisitorLang();
+
+  // Mitmekeelsed tekstid
+  const I18N = {
+    et: {
+      placeholder: 'Kirjuta siia...',
+      subtitle: 'taig.ee müügiassistent • vastab kohe',
+      powered: 'Powered by AI ✨',
+      homeGreeting: 'Tere tulemast taig.ee poodi! 👋 Olen siin, et aidata teil leida sobivaid tooteid. Mis teid huvitab – koolitarbed, kontoritarbed või ehk Thule reisikohvrid?',
+      checkoutGreeting: 'Näen, et olete ostmas! 🛒 Kas teadsite, et koodiga TAIG10 saate 10% soodsamalt? Kas saan millegagi aidata?',
+      productGreeting: 'Kas teil on selle toote kohta küsimusi? 🤔 Aitan hea meelega!',
+      schoolGreeting: 'Koolitarvete valik on meil lai! 📚 Kas otsite midagi konkreetset – pliiatseid, vihikuid, värve?',
+      officeGreeting: 'Kontoritarbed mugavalt kohale! 🏢 Kas otsite midagi konkreetset?',
+      exitIntent: 'Ärge lahkuge! 👋 Kasutage koodi <strong>TAIG10</strong> ja saate <strong>10% soodsamalt!</strong>',
+    },
+    en: {
+      placeholder: 'Type here...',
+      subtitle: 'taig.ee sales assistant • replies instantly',
+      powered: 'Powered by AI ✨',
+      homeGreeting: 'Welcome to taig.ee! 👋 We have 5000+ products: school supplies, office supplies, Thule luggage & Case Logic bags. How can I help you?',
+      checkoutGreeting: 'Ready to order! 🛒 Use code TAIG10 for 10% off! Need any help?',
+      productGreeting: 'Any questions about this product? 🤔 I\'m happy to help!',
+      schoolGreeting: 'Looking for school supplies? 📚 We have a great selection!',
+      officeGreeting: 'Office supplies delivered to your door! 🏢 What do you need?',
+      exitIntent: 'Wait! 👋 Use code <strong>TAIG10</strong> for <strong>10% off</strong> your order!',
+    },
+    ru: {
+      placeholder: 'Напишите здесь...',
+      subtitle: 'taig.ee помощник • отвечает сразу',
+      powered: 'Powered by AI ✨',
+      homeGreeting: 'Добро пожаловать в taig.ee! 👋 У нас 5000+ товаров: школьные принадлежности, канцтовары, чемоданы Thule и сумки Case Logic. Чем могу помочь?',
+      checkoutGreeting: 'Оформляете заказ! 🛒 Код TAIG10 даёт скидку 10%! Нужна помощь?',
+      productGreeting: 'Есть вопросы по этому товару? 🤔 С радостью помогу!',
+      schoolGreeting: 'Ищете школьные принадлежности? 📚 У нас большой выбор!',
+      officeGreeting: 'Канцтовары с доставкой! 🏢 Что вам нужно?',
+      exitIntent: 'Подождите! 👋 Код <strong>TAIG10</strong> даёт <strong>скидку 10%</strong> на весь заказ!',
+    },
+    fi: {
+      placeholder: 'Kirjoita tähän...',
+      subtitle: 'taig.ee myyntiavustaja • vastaa heti',
+      powered: 'Powered by AI ✨',
+      homeGreeting: 'Tervetuloa taig.ee-kauppaan! 👋 Meillä on yli 5000 tuotetta: koulutarvikkeet, toimistotarvikkeet, Thule-matkalaukut. Miten voin auttaa?',
+      checkoutGreeting: 'Olet tekemässä tilausta! 🛒 Koodilla TAIG10 saat 10% alennuksen!',
+      productGreeting: 'Onko kysyttävää tästä tuotteesta? 🤔 Autan mielelläni!',
+      schoolGreeting: 'Etsitkö koulutarvikkeita? 📚 Meillä on laaja valikoima!',
+      officeGreeting: 'Toimistotarvikkeet kotiin! 🏢 Mitä tarvitset?',
+      exitIntent: 'Odota! 👋 Käytä koodia <strong>TAIG10</strong> ja saat <strong>10% alennuksen!</strong>',
+    },
+    lv: {
+      placeholder: 'Rakstiet šeit...',
+      subtitle: 'taig.ee palīgs • atbild uzreiz',
+      powered: 'Powered by AI ✨',
+      homeGreeting: 'Laipni lūdzam taig.ee veikalā! 👋 Mums ir 5000+ produktu: skolas piederumi, biroja preces, Thule koferi. Kā varu palīdzēt?',
+      checkoutGreeting: 'Gatavojaties pasūtīt! 🛒 Ar kodu TAIG10 saņemiet 10% atlaidi!',
+      productGreeting: 'Vai jums ir jautājumi par šo produktu? 🤔 Labprāt palīdzēšu!',
+      schoolGreeting: 'Meklējat skolas piederumus? 📚 Mums ir liela izvēle!',
+      officeGreeting: 'Biroja preces ar piegādi! 🏢 Ko jūs meklējat?',
+      exitIntent: 'Pagaidiet! 👋 Izmantojiet kodu <strong>TAIG10</strong> un saņemiet <strong>10% atlaidi!</strong>',
+    },
+    lt: {
+      placeholder: 'Rašykite čia...',
+      subtitle: 'taig.ee padėjėjas • atsako iškart',
+      powered: 'Powered by AI ✨',
+      homeGreeting: 'Sveiki atvykę į taig.ee! 👋 Turime 5000+ prekių: mokyklinės reikmenys, biuro prekės, Thule lagaminai. Kuo galiu padėti?',
+      checkoutGreeting: 'Ruošiatės užsakyti! 🛒 Su kodu TAIG10 gaunate 10% nuolaidą!',
+      productGreeting: 'Turite klausimų apie šią prekę? 🤔 Mielai padėsiu!',
+      schoolGreeting: 'Ieškote mokyklinių reikmenų? 📚 Turime didelį pasirinkimą!',
+      officeGreeting: 'Biuro prekės su pristatymu! 🏢 Ko jums reikia?',
+      exitIntent: 'Palaukite! 👋 Naudokite kodą <strong>TAIG10</strong> ir gaukite <strong>10% nuolaidą!</strong>',
+    },
+  };
+
+  function t(key) {
+    return (I18N[VISITOR_LANG] && I18N[VISITOR_LANG][key]) || I18N.en[key] || I18N.et[key];
+  }
+
+  const PLACEHOLDER = t('placeholder');
 
   // Sessioon
   let sessionId = localStorage.getItem('taig_chat_session') || '';
@@ -79,34 +169,34 @@
     const title = document.title.toLowerCase();
 
     if (path.includes('/checkout') || path.includes('/cart')) {
-      return { type: 'checkout', greeting: 'Näen, et olete ostmas! 🛒 Kas teadsite, et koodiga TAIG10 saate 10% soodsamalt? Kas saan millegagi aidata?' };
+      return { type: 'checkout', greeting: t('checkoutGreeting') };
     }
     if (path.includes('thule') || title.includes('thule')) {
-      return { type: 'thule', greeting: 'Uurite Thule tooteid? 🧳 Need on absoluutne premium kvaliteet! Küsige julgelt – aitan leida teile sobiva kohvri või koti!' };
+      return { type: 'thule', greeting: t('homeGreeting') };
     }
     if (path.includes('case-logic') || title.includes('case logic')) {
-      return { type: 'caselogic', greeting: 'Case Logic teeb suurepäraseid sülearvutikotte! 💼 Mis suuruses arvutile otsite kotti?' };
+      return { type: 'caselogic', greeting: t('homeGreeting') };
     }
     if (path.includes('kooli') || path.includes('school') || title.includes('kooli')) {
-      return { type: 'school', greeting: 'Koolitarvete valik on meil lai! 📚 Kas otsite midagi konkreetset – pliiatseid, vihikuid, värve? Aitan leida!' };
+      return { type: 'school', greeting: t('schoolGreeting') };
     }
     if (path.includes('kontori') || path.includes('office') || title.includes('kontori')) {
-      return { type: 'office', greeting: 'Kontoritarbed mugavalt kohale! 🏢 Kas otsite midagi konkreetset? Meil on Pentel, Staedtler ja teised top brändid!' };
+      return { type: 'office', greeting: t('officeGreeting') };
     }
     if (path.includes('kirjutus') || title.includes('kirjutus') || title.includes('pliiats') || title.includes('pastakas')) {
-      return { type: 'writing', greeting: 'Kirjutusvahendite valik! ✏️ Meie bestseller on Pentel BK417 pastakas – ainult 0,21€! Kas aitan valida?' };
+      return { type: 'writing', greeting: t('officeGreeting') };
     }
     // Toote leht
     if (path.match(/\.html$/) || document.querySelector('.product-info-main')) {
-      return { type: 'product', greeting: 'Kas teil on selle toote kohta küsimusi? 🤔 Aitan hea meelega! Küsige mõõtude, materjalide või alternatiivide kohta.' };
+      return { type: 'product', greeting: t('productGreeting') };
     }
     // Avalehe / üldine
-    return { type: 'home', greeting: 'Tere tulemast taig.ee poodi! 👋 Olen siin, et aidata teil leida sobivaid tooteid. Mis teid huvitab – koolitarbed, kontoritarbed või ehk Thule reisikohvrid?' };
+    return { type: 'home', greeting: t('homeGreeting') };
   }
 
-  // === QUICK-ACTION NUPUD ===
-  function getQuickActions(pageType) {
-    const actions = {
+  // === QUICK-ACTION NUPUD (mitmekeelne) ===
+  const QUICK_ACTIONS_I18N = {
+    et: {
       home: [
         { label: '📚 Koolitarbed', query: 'Näita populaarseid koolitarbeid' },
         { label: '✏️ Kirjutusvahendid', query: 'Mis pastakad ja pliiatsid teil on?' },
@@ -121,12 +211,6 @@
         { label: '🎒 Kooli stardipakk', query: '__school_wizard__' },
         { label: '🏷️ TAIG10 -10%', query: 'Kuidas saan allahindlust?' },
       ],
-      office: [
-        { label: '🖊️ Pastakad', query: 'Mis pastakad teil on?' },
-        { label: '📎 Kontorikaubad', query: 'Näita kontoritarbeid' },
-        { label: '💰 Hulgitellimus', query: 'Kas saan hulgihinda?' },
-        { label: '🏷️ TAIG10 -10%', query: 'Kuidas saan allahindlust?' },
-      ],
       checkout: [
         { label: '🏷️ Kasuta TAIG10', query: 'Kuidas kasutada kupongikoodi?' },
         { label: '🚚 Tarne info', query: 'Mis on tarnevõimalused ja hinnad?' },
@@ -137,22 +221,63 @@
         { label: '🔄 Alternatiivid', query: 'Mis alternatiive on sellele tootele?' },
         { label: '🏷️ TAIG10 -10%', query: 'Kas saan allahindlust?' },
       ],
-      thule: [
-        { label: '🧳 Kohvrid', query: 'Näita Thule kohvreid' },
-        { label: '🎒 Seljakotid', query: 'Näita Thule seljakotte' },
-        { label: '💼 Kotid', query: 'Näita Thule kotte' },
+    },
+    en: {
+      home: [
+        { label: '📚 School supplies', query: 'Show me popular school supplies' },
+        { label: '✏️ Pens & pencils', query: 'What pens and pencils do you have?' },
+        { label: '🧳 Thule luggage', query: 'Show Thule suitcases and bags' },
+        { label: '🏷️ Discounts', query: 'What discounts are available?' },
       ],
-      caselogic: [
-        { label: '💻 Sülearvutikotid', query: 'Näita Case Logic sülearvutikotte' },
-        { label: '📱 Tahvelarvutile', query: 'Näita Case Logic tahvelarvutikotte' },
+      product: [
+        { label: '📏 Dimensions?', query: 'What are the dimensions of this product?' },
+        { label: '🔄 Alternatives', query: 'What alternatives do you have?' },
+        { label: '🏷️ TAIG10 -10%', query: 'How to get a discount?' },
       ],
-      writing: [
-        { label: '🖊️ Pastakad', query: 'Näita pastakaid' },
-        { label: '✏️ Pliiatsid', query: 'Näita pliiatseid' },
-        { label: '🖍️ Markerid', query: 'Näita markereid' },
+    },
+    ru: {
+      home: [
+        { label: '📚 Школьные', query: 'Покажите школьные принадлежности' },
+        { label: '✏️ Ручки', query: 'Какие ручки и карандаши у вас есть?' },
+        { label: '🧳 Thule', query: 'Покажите чемоданы и сумки Thule' },
+        { label: '🏷️ Скидки', query: 'Какие скидки сейчас есть?' },
       ],
-    };
-    return actions[pageType] || actions.home;
+      product: [
+        { label: '📏 Размеры?', query: 'Какие размеры у этого товара?' },
+        { label: '🔄 Аналоги', query: 'Какие есть аналоги?' },
+        { label: '🏷️ TAIG10 -10%', query: 'Как получить скидку?' },
+      ],
+    },
+    fi: {
+      home: [
+        { label: '📚 Koulutarvikkeet', query: 'Näytä suosittuja koulutarvikkeita' },
+        { label: '✏️ Kynät', query: 'Mitä kyniä teillä on?' },
+        { label: '🧳 Thule', query: 'Näytä Thule-matkalaukut' },
+        { label: '🏷️ Alennukset', query: 'Mitä alennuksia on?' },
+      ],
+    },
+    lv: {
+      home: [
+        { label: '📚 Skolas preces', query: 'Parādiet skolas piederumus' },
+        { label: '✏️ Pildspalvas', query: 'Kādas pildspalvas jums ir?' },
+        { label: '🧳 Thule', query: 'Parādiet Thule koferi un somas' },
+        { label: '🏷️ Atlaides', query: 'Kādas atlaides ir pieejamas?' },
+      ],
+    },
+    lt: {
+      home: [
+        { label: '📚 Mokyklinės', query: 'Parodykite mokyklinius reikmenis' },
+        { label: '✏️ Rašikliai', query: 'Kokius rašiklius turite?' },
+        { label: '🧳 Thule', query: 'Parodykite Thule lagaminus' },
+        { label: '🏷️ Nuolaidos', query: 'Kokios nuolaidos galimos?' },
+      ],
+    },
+  };
+
+  function getQuickActions(pageType) {
+    const langActions = QUICK_ACTIONS_I18N[VISITOR_LANG] || QUICK_ACTIONS_I18N.en;
+    // Proovi leida täpne lehetüüp, muidu kasuta home
+    return langActions[pageType] || langActions.home || QUICK_ACTIONS_I18N.et[pageType] || QUICK_ACTIONS_I18N.et.home;
   }
 
   // === STIILID ===
@@ -842,7 +967,7 @@
       <div class="taig-chat-header">
         <div>
           <h3><span class="online-dot"></span>${WIDGET_TITLE}</h3>
-          <div class="subtitle">taig.ee müügiassistent • vastab kohe</div>
+          <div class="subtitle">${t('subtitle')}</div>
         </div>
         <button class="taig-chat-close" onclick="document.getElementById('taig-chat-btn').click()">✕</button>
       </div>
@@ -852,7 +977,7 @@
         <input class="taig-chat-input" id="taig-input" type="text" placeholder="${PLACEHOLDER}" autocomplete="off">
         <button class="taig-chat-send" id="taig-send" onclick="window._taigSend()">➤</button>
       </div>
-      <div class="taig-powered">Powered by AI ✨</div>
+      <div class="taig-powered">${t('powered')}</div>
     `;
     document.body.appendChild(win);
 
@@ -885,7 +1010,7 @@
         sessionStorage.setItem('taig_exit_shown', 'true');
         bubble.innerHTML = `
           <div class="bubble-close" onclick="event.stopPropagation(); this.parentElement.classList.remove('show');">✕</div>
-          Ärge lahkuge! 👋 Kasutage koodi <strong>TAIG10</strong> ja saate <strong>10% soodsamalt!</strong>
+          ${t('exitIntent')}
         `;
         bubble.classList.add('show');
         setTimeout(function() { bubble.classList.remove('show'); }, 8000);
