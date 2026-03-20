@@ -142,6 +142,7 @@ Kui sõnum algab "[PROAKTIIVNE MÜÜK]", siis tegu on AUTOMAATSE päringuga - kl
 - Kui klient on KATEGOORIAS, paku selle kategooria populaarsemaid tooteid
 - Ära KUNAGI paku suvalist muud kategooriat (nt koolitarbeid kui klient vaatab kohvreid)
 - Ära maini kohe allahindlust - kõigepealt näita väärtust!
+- ÄRA MAINI proaktiivses sõnumis kupongikoode (TAIG10, TAIG15)! Need on alles läbirääkimiste jaoks hiljem.
 - Ära ütle kliendile et said "proaktiivse müügi" sõnumi - räägi loomulikult
 - Hoia sõnum lühike (2-3 lauset + 1-2 toodet)
 
@@ -302,7 +303,8 @@ class ChatEngine:
         if is_business_query:
             if any(kw in msg_lower for kw in ['allahindlus', 'soodustus', 'soodsamalt', 'kupong', 'kood', 'odavam', 'kallis', 'liiga kallis', 'odavamalt', 'discount', 'cheaper', 'скидка', 'дешевле', 'atlaide', 'nuolaida']):
                 # Vaata vestluse ajalugu - kas TAIG10 on juba mainitud?
-                history_text = ' '.join([m.get('content', '') for m in session['messages'][-6:]]).lower()
+                # Filtreeri välja proaktiivsed sõnumid (ei loe allahindluse tasemena)
+                history_text = ' '.join([m.get('content', '') for m in session['messages'][-6:] if not m.get('content', '').startswith('[PROAKTIIVNE')]).lower()
                 if 'taig15' in history_text:
                     product_context += "⚡ KLIENT KAUPLEB EDASI! TAIG15 (15%) on JUBA pakutud - see ON meie PARIM pakkumine. Ütle sõbralikult aga kindlalt, et rohkem allahindlust pole võimalik. Rõhuta et 15% on VÄGA hea pakkumine! Kui nad ikka ei osta, soovita kirjutada veebipood@taig.ee hulgipakkumise jaoks.\n\n"
                 elif 'taig10' in history_text:
