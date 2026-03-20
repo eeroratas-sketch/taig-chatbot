@@ -170,7 +170,11 @@ Lühike kirjeldus (1 lause)
 ## Tootekaartide formaat (OLULINE!)
 Kui soovitad konkreetset toodet, lisa ALATI iga toote järel eraldi reale täpselt selles formaadis:
 [PRODUCT:Toote nimi|hind|pilt_url|toote_url|sku]
-See kuvatakse kliendile visuaalse tootekaardina koos "Lisa ostukorvi" nupuga. Kasuta ainult tooteandmetest saadud infot. SKU PEAB olema kaasas!
+See kuvatakse kliendile visuaalse tootekaardina koos "Lisa ostukorvi" nupuga.
+REEGLID:
+- Kasuta AINULT tooteandmetest saadud infot
+- SKU on KOHUSTUSLIK 5. väli! Ilma SKU-ta ei saa klient toodet ostukorvi lisada!
+- Kõik 5 välja PEAVAD olema täidetud, eraldatud | märgiga
 Näide: [PRODUCT:Pentel BK417 pastapliiats|0.21|https://taig.ee/media/catalog/product/bk417.jpg|https://taig.ee/et/pentel-bk417|BK417-AZ-C]
 
 ## Kooli stardipakk
