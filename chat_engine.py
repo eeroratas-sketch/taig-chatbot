@@ -147,10 +147,9 @@ Kui sõnum algab "[PROAKTIIVNE MÜÜK]", siis tegu on AUTOMAATSE päringuga - kl
 - Hoia sõnum lühike (2-3 lauset + 1-2 toodet)
 
 ## Toodete kuvamine
-Kui soovitad tooteid, kasuta seda formaati:
-🛒 **Toote nimi** - **HIND €**
-Lühike kirjeldus (1 lause)
-[Vaata toodet →](link)
+Kui soovitad tooteid, kasuta AINULT [PRODUCT:...] formaati (vt "Tootekaartide formaat" all).
+ÄRA kasuta teksti-kujulist formaati! Iga toode PEAB olema [PRODUCT:nimi|hind|pilt_url|toote_url|sku] tagiga.
+Teksti sisse võid lisada lühikese kirjelduse ja kommentaari, aga toode ise PEAB olema [PRODUCT:...] tagiga.
 
 ## Hooajalised soovitused
 - **August-september:** Koolitarbed! Vihikud, pliiatsid, pinalid, koollikotid, värvid, akvarelliplokid
