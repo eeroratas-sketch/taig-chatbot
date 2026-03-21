@@ -810,17 +810,21 @@
   // Formaat: [PRODUCT:nimi|hind|pilt_url|toote_url|sku]
   function parseProducts(text) {
     const products = [];
+    // Eemaldame reavahetused PRODUCT tagide seest (Claude võib murda pikki URL-e)
+    var cleaned = text.replace(/\[PRODUCT:([\s\S]*?)\]/g, function(match, inner) {
+      return '[PRODUCT:' + inner.replace(/\n/g, '') + ']';
+    });
     const regex = /\[PRODUCT:([^\]]+)\]/g;
     let match;
-    while ((match = regex.exec(text)) !== null) {
+    while ((match = regex.exec(cleaned)) !== null) {
       const parts = match[1].split('|');
       if (parts.length >= 2) {
         products.push({
-          name: parts[0] || '',
-          price: parts[1] || '',
-          image: parts[2] || '',
-          url: parts[3] || '',
-          sku: parts[4] || '',
+          name: (parts[0] || '').trim(),
+          price: (parts[1] || '').trim(),
+          image: (parts[2] || '').trim(),
+          url: (parts[3] || '').trim(),
+          sku: (parts[4] || '').trim(),
           raw: match[0],
         });
       }
@@ -976,9 +980,9 @@
     });
   }
 
-  // Eemalda toote tag tekstist
+  // Eemalda toote tag tekstist (ka mitmerealised)
   function stripProductTags(text) {
-    return text.replace(/\[PRODUCT:[^\]]+\]/g, '').trim();
+    return text.replace(/\[PRODUCT:[\s\S]*?\]/g, '').trim();
   }
 
   // Parsi [LOW_STOCK:N] tag
