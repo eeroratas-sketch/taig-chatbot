@@ -1255,9 +1255,26 @@
     document.addEventListener('mouseout', function(e) {
       if (e.clientY < 5 && !isOpen && !autoOpenDone && !sessionStorage.getItem('taig_exit_shown')) {
         sessionStorage.setItem('taig_exit_shown', 'true');
+
+        // Kontrolli kas toode on juba soodushinnaga - siis ÄRA paku allahindlust
+        var isAlreadyDiscounted = false;
+        var oldPriceEl = document.querySelector('.old-price, .price-wrapper .old-price, [data-price-type="oldPrice"]');
+        if (oldPriceEl) isAlreadyDiscounted = true;
+
+        var exitMsg = '';
+        if (isAlreadyDiscounted) {
+          // Toode on juba soodushinnaga - paku abi, mitte allahindlust
+          exitMsg = VISITOR_LANG === 'et' ? 'Ärge lahkuge! 👋 Kas teil on küsimusi? Aitan hea meelega!' :
+                    VISITOR_LANG === 'en' ? 'Wait! 👋 Any questions? I\'m happy to help!' :
+                    VISITOR_LANG === 'ru' ? 'Подождите! 👋 Есть вопросы? С радостью помогу!' :
+                    'Ärge lahkuge! 👋 Kas teil on küsimusi? Aitan hea meelega!';
+        } else {
+          exitMsg = t('exitIntent');
+        }
+
         bubble.innerHTML = `
           <div class="bubble-close" onclick="event.stopPropagation(); this.parentElement.classList.remove('show');">✕</div>
-          ${t('exitIntent')}
+          ${exitMsg}
         `;
         bubble.classList.add('show');
         setTimeout(function() { bubble.classList.remove('show'); }, 8000);
