@@ -262,16 +262,34 @@ class ChatEngine:
         # Mostly ASCII - likely English
         return "en"
 
-    def _log_query(self, session_id, user_message, language):
+    def _log_query(self, session_id, user_message, language, page_context=None, ai_response=None):
         """Logi päring analytics faili."""
         try:
             queries_file = os.path.join(config.ANALYTICS_DIR, "queries.jsonl")
             entry = {
                 "timestamp": datetime.now().isoformat(),
                 "session_id": session_id,
-                "message": user_message[:200],
+                "message": user_message[:500],
                 "language": language,
             }
+            # Lisa lehe kontekst
+            if page_context:
+                entry["page"] = {}
+                if page_context.get('product_name'):
+                    entry["page"]["product"] = page_context['product_name']
+                if page_context.get('product_price'):
+                    entry["page"]["price"] = page_context['product_price']
+                if page_context.get('product_sku'):
+                    entry["page"]["sku"] = page_context['product_sku']
+                if page_context.get('category_name'):
+                    entry["page"]["category"] = page_context['category_name']
+                if page_context.get('page_type'):
+                    entry["page"]["type"] = page_context['page_type']
+                if page_context.get('url'):
+                    entry["page"]["url"] = page_context['url']
+            # Lisa AI vastus (kärbi)
+            if ai_response:
+                entry["response"] = ai_response[:500]
             with open(queries_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception as e:
@@ -281,9 +299,8 @@ class ChatEngine:
         """Töötle kasutaja sõnum ja tagasta vastus."""
         session = self._get_session(session_id)
 
-        # Keele tuvastamine ja logimine
+        # Keele tuvastamine (logimine toimub pärast AI vastust)
         language = self._detect_language(user_message)
-        self._log_query(session_id, user_message, language)
 
         # 1. Tuvasta kas on äriküsimus (ei vaja tooteotsinguud)
         msg_lower = user_message.lower()
@@ -392,6 +409,9 @@ class ChatEngine:
                 session['messages'] = session['messages'][-config.MAX_HISTORY_MESSAGES:]
 
             log.info(f"Vastatud: session={session_id[:8]}, tokens={response.usage.input_tokens}+{response.usage.output_tokens}")
+
+            # Logi koos AI vastusega
+            self._log_query(session_id, user_message, language, page_context=page_context, ai_response=assistant_message)
 
             return {
                 'message': assistant_message,

@@ -155,7 +155,7 @@ async def health():
         stats['chat'] = chat_engine.get_stats()
     return {
         "status": "ok",
-        "version": "1.2",
+        "version": "1.3",
         "stats": stats,
     }
 
@@ -213,6 +213,118 @@ async def analytics():
     stats['languages'] = languages
     stats['total_logged_queries'] = total_queries
     return stats
+
+
+@app.get("/api/dashboard")
+async def dashboard(date: str = None):
+    """Päeva vestluste ülevaade - kes mida vaatas, küsis, mida AI vastas."""
+    from collections import defaultdict
+
+    target_date = date or datetime.now().strftime("%Y-%m-%d")
+
+    queries_file = os.path.join(config.ANALYTICS_DIR, "queries.jsonl")
+    feedback_file = os.path.join(config.ANALYTICS_DIR, "feedback.jsonl")
+
+    sessions = defaultdict(lambda: {"messages": [], "pages": set(), "products": set(), "language": "et", "first_seen": None, "last_seen": None})
+    day_stats = {"total_messages": 0, "unique_sessions": 0, "products_viewed": set(), "categories_viewed": set(), "languages": defaultdict(int), "feedback_pos": 0, "feedback_neg": 0, "popular_questions": defaultdict(int)}
+
+    if os.path.exists(queries_file):
+        with open(queries_file, encoding="utf-8") as f:
+            for line in f:
+                try:
+                    d = json.loads(line)
+                except:
+                    continue
+                ts = d.get("timestamp", "")
+                if not ts.startswith(target_date):
+                    continue
+
+                sid = d.get("session_id", "unknown")[:8]
+                msg = d.get("message", "")
+                resp = d.get("response", "")
+                lang = d.get("language", "et")
+                page = d.get("page", {})
+
+                day_stats["total_messages"] += 1
+                day_stats["languages"][lang] += 1
+
+                s = sessions[sid]
+                if not s["first_seen"]:
+                    s["first_seen"] = ts
+                s["last_seen"] = ts
+                s["language"] = lang
+
+                # Lisa vestlus
+                entry = {"time": ts[11:19] if len(ts) > 19 else ts, "question": msg[:200]}
+                if resp:
+                    entry["answer"] = resp[:300]
+                s["messages"].append(entry)
+
+                # Lisa tooted/lehed
+                if page.get("product"):
+                    s["products"].add(page["product"])
+                    day_stats["products_viewed"].add(page["product"])
+                if page.get("category"):
+                    s["pages"].add(page["category"])
+                    day_stats["categories_viewed"].add(page["category"])
+                if page.get("url"):
+                    s["pages"].add(page["url"])
+
+                # Populaarsed küsimused (filtreeri proaktiivsed välja)
+                if msg and not msg.startswith("[PROAKTIIVNE"):
+                    # Lihtsusta küsimust
+                    q = msg.lower().strip()[:80]
+                    if len(q) > 5:
+                        day_stats["popular_questions"][q] += 1
+
+    # Feedback
+    if os.path.exists(feedback_file):
+        with open(feedback_file, encoding="utf-8") as f:
+            for line in f:
+                try:
+                    d = json.loads(line)
+                except:
+                    continue
+                ts = d.get("timestamp", "")
+                if ts.startswith(target_date):
+                    if d.get("rating") == "up":
+                        day_stats["feedback_pos"] += 1
+                    elif d.get("rating") == "down":
+                        day_stats["feedback_neg"] += 1
+
+    # Koosta vastus
+    sessions_list = []
+    for sid, s in sessions.items():
+        sessions_list.append({
+            "session_id": sid,
+            "language": s["language"],
+            "first_seen": s["first_seen"],
+            "last_seen": s["last_seen"],
+            "message_count": len(s["messages"]),
+            "products_viewed": list(s["products"]),
+            "pages": list(s["pages"])[:10],
+            "conversation": s["messages"][:50],
+        })
+
+    # Sorteeri viimase aktiivsuse järgi
+    sessions_list.sort(key=lambda x: x["last_seen"] or "", reverse=True)
+
+    # Top küsimused
+    top_questions = sorted(day_stats["popular_questions"].items(), key=lambda x: x[1], reverse=True)[:20]
+
+    return {
+        "date": target_date,
+        "summary": {
+            "total_messages": day_stats["total_messages"],
+            "unique_sessions": len(sessions),
+            "products_viewed": list(day_stats["products_viewed"])[:50],
+            "categories_viewed": list(day_stats["categories_viewed"])[:20],
+            "languages": dict(day_stats["languages"]),
+            "feedback": {"positive": day_stats["feedback_pos"], "negative": day_stats["feedback_neg"]},
+        },
+        "top_questions": [{"question": q, "count": c} for q, c in top_questions],
+        "sessions": sessions_list,
+    }
 
 
 # Serve static files (widget)
