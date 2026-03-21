@@ -191,6 +191,12 @@
     const path = window.location.pathname.toLowerCase();
     const title = document.title.toLowerCase();
 
+    // Avaleht - kontrolli ESIMESENA (path on / või /et/ vms)
+    var isHomePage = path === '/' || path.match(/^\/[a-z]{2}\/?$/);
+    if (isHomePage) {
+      return { type: 'home', greeting: t(greetingKey('homeGreeting')) };
+    }
+
     if (path.includes('/checkout') || path.includes('/cart')) {
       return { type: 'checkout', greeting: t('checkoutGreeting') };
     }
@@ -200,10 +206,10 @@
     if (path.includes('case-logic') || title.includes('case logic')) {
       return { type: 'caselogic', greeting: t(greetingKey('homeGreeting')) };
     }
-    if (path.includes('kooli') || path.includes('school') || title.includes('kooli')) {
+    if (path.includes('kooli') || path.includes('school')) {
       return { type: 'school', greeting: t(greetingKey('homeGreeting')) };
     }
-    if (path.includes('kontori') || path.includes('office') || title.includes('kontori')) {
+    if (path.includes('kontori') || path.includes('office')) {
       return { type: 'office', greeting: t(greetingKey('homeGreeting')) };
     }
     if (path.includes('kirjutus') || title.includes('kirjutus') || title.includes('pliiats') || title.includes('pastakas')) {
@@ -213,7 +219,7 @@
     if (path.match(/\.html$/) || document.querySelector('.product-info-main')) {
       return { type: 'product', greeting: t(greetingKey('productGreeting')) };
     }
-    // Avalehe / üldine
+    // Üldine
     return { type: 'home', greeting: t(greetingKey('homeGreeting')) };
   }
 
