@@ -549,14 +549,17 @@
       color: #dc2626;
     }
 
-    /* Toote kaardid */
+    /* Toote kaardid - !important vajalik Magento CSS ülekirjutamise vastu */
     .taig-products-row {
-      display: flex;
-      gap: 10px;
-      overflow-x: auto;
-      padding: 4px 2px 8px 2px;
-      align-self: flex-start;
-      max-width: 100%;
+      display: flex !important;
+      gap: 10px !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      padding: 4px 2px 8px 2px !important;
+      align-self: flex-start !important;
+      max-width: 100% !important;
+      min-height: 180px !important;
+      height: auto !important;
       scrollbar-width: thin;
       scrollbar-color: #cbd5e1 transparent;
     }
@@ -571,82 +574,86 @@
       border-radius: 2px;
     }
     .taig-product-card {
-      background: white;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 10px;
-      min-width: 150px;
-      max-width: 160px;
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      transition: box-shadow 0.2s, transform 0.2s;
+      background: white !important;
+      border: 1px solid #e2e8f0 !important;
+      border-radius: 12px !important;
+      padding: 10px !important;
+      min-width: 150px !important;
+      max-width: 160px !important;
+      flex-shrink: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 6px !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+      transition: box-shadow 0.2s, transform 0.2s !important;
+      height: auto !important;
+      min-height: 160px !important;
     }
     .taig-product-card:hover {
-      box-shadow: 0 4px 16px rgba(37,99,235,0.15);
-      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(37,99,235,0.15) !important;
+      transform: translateY(-2px) !important;
     }
     .taig-product-img {
-      width: 100%;
-      height: 80px;
-      object-fit: contain;
-      border-radius: 6px;
-      background: #f8fafc;
+      width: 100% !important;
+      height: 80px !important;
+      object-fit: contain !important;
+      border-radius: 6px !important;
+      background: #f8fafc !important;
+      display: block !important;
     }
     .taig-product-img-placeholder {
-      width: 100%;
-      height: 80px;
-      background: #f1f5f9;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
+      width: 100% !important;
+      height: 80px !important;
+      background: #f1f5f9 !important;
+      border-radius: 6px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-size: 28px !important;
     }
     .taig-product-name {
-      font-size: 12px;
-      font-weight: 600;
-      color: #1e293b;
-      line-height: 1.3;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      color: #1e293b !important;
+      line-height: 1.3 !important;
+      display: -webkit-box !important;
+      -webkit-line-clamp: 2 !important;
+      -webkit-box-orient: vertical !important;
+      overflow: hidden !important;
+      min-height: 28px !important;
     }
     .taig-product-price {
-      font-size: 13px;
-      font-weight: 700;
-      color: #2563eb;
+      font-size: 13px !important;
+      font-weight: 700 !important;
+      color: #2563eb !important;
     }
     .taig-product-btn {
-      display: block;
-      text-align: center;
-      background: linear-gradient(135deg, #2563eb, #1e40af);
-      color: white;
-      text-decoration: none;
-      border-radius: 8px;
-      padding: 5px 10px;
-      font-size: 12px;
-      font-weight: 600;
-      transition: opacity 0.2s;
-      font-family: inherit;
+      display: block !important;
+      text-align: center !important;
+      background: linear-gradient(135deg, #2563eb, #1e40af) !important;
+      color: white !important;
+      text-decoration: none !important;
+      border-radius: 8px !important;
+      padding: 5px 10px !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      transition: opacity 0.2s !important;
+      font-family: inherit !important;
     }
     .taig-product-btn:hover {
-      opacity: 0.85;
-      color: white;
-      text-decoration: none;
+      opacity: 0.85 !important;
+      color: white !important;
+      text-decoration: none !important;
     }
     .taig-cart-btn {
-      background: linear-gradient(135deg, #16a34a, #15803d);
-      border: none;
-      cursor: pointer;
-      color: white;
+      background: linear-gradient(135deg, #16a34a, #15803d) !important;
+      border: none !important;
+      cursor: pointer !important;
+      color: white !important;
     }
     .taig-cart-btn:disabled {
-      opacity: 0.6;
-      cursor: wait;
+      opacity: 0.6 !important;
+      cursor: wait !important;
     }
     .taig-add-all-btn {
       background: linear-gradient(135deg, #16a34a, #15803d);
