@@ -176,6 +176,75 @@
   }
   var returningVisitor = isReturningVisitor();
 
+  // Külastuste loendur (püsikliendi tuvastamiseks)
+  var visitCount = parseInt(localStorage.getItem('taig_visit_count') || '0') + 1;
+  localStorage.setItem('taig_visit_count', visitCount.toString());
+
+  // === SIRVIMISAJALOO SALVESTAMINE ===
+  function saveViewedProduct() {
+    var pc = readPageContext();
+    if (pc.product_name) {
+      try {
+        var history = JSON.parse(localStorage.getItem('taig_viewed') || '[]');
+        // Ära lisa duplikaate
+        if (history.length === 0 || history[0].name !== pc.product_name) {
+          history.unshift({
+            name: pc.product_name,
+            price: pc.product_price || '',
+            url: window.location.href,
+            time: new Date().toISOString()
+          });
+          // Hoia ainult viimased 10
+          if (history.length > 10) history = history.slice(0, 10);
+          localStorage.setItem('taig_viewed', JSON.stringify(history));
+        }
+      } catch(e) {}
+    }
+  }
+  saveViewedProduct();
+
+  function getViewedProducts() {
+    try {
+      return JSON.parse(localStorage.getItem('taig_viewed') || '[]');
+    } catch(e) { return []; }
+  }
+
+  // === TASUTA TARNE PROGRESSIRIBA ===
+  function getCartTotal() {
+    try {
+      var mageCache = localStorage.getItem('mage-cache-storage');
+      if (mageCache) {
+        var parsed = JSON.parse(mageCache);
+        if (parsed && parsed.cart) {
+          return parseFloat(parsed.cart.subtotalAmount || 0);
+        }
+      }
+    } catch(e) {}
+    return 0;
+  }
+
+  function renderShippingBar() {
+    var FREE_SHIPPING = 50;
+    var total = getCartTotal();
+    if (total <= 0) return null;
+
+    var pct = Math.min(100, Math.round(total / FREE_SHIPPING * 100));
+    var remaining = Math.max(0, FREE_SHIPPING - total).toFixed(2);
+    var isComplete = total >= FREE_SHIPPING;
+
+    var bar = document.createElement('div');
+    bar.className = 'taig-shipping-bar' + (isComplete ? ' complete' : '');
+
+    if (isComplete) {
+      bar.innerHTML = '<div class="bar-text"><span>🎉 TASUTA tarne!</span><span>' + total.toFixed(2) + '€</span></div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>';
+    } else {
+      bar.innerHTML = '<div class="bar-text"><span>🚚 Veel <strong>' + remaining + '€</strong> tasuta tarneni!</span><span>' + total.toFixed(2) + '€ / ' + FREE_SHIPPING + '€</span></div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>';
+    }
+    return bar;
+  }
+
   function greetingKey(base) {
     if (returningVisitor) {
       var returnKey = base + 'Return';
@@ -719,6 +788,49 @@
       50% { opacity: 0.7; }
     }
 
+    /* Tasuta tarne progressiriba */
+    .taig-shipping-bar {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin: 8px 0;
+      font-size: 12px;
+    }
+    .taig-shipping-bar .bar-track {
+      background: #e5e7eb;
+      border-radius: 4px;
+      height: 6px;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+    .taig-shipping-bar .bar-fill {
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+    .taig-shipping-bar.complete {
+      background: #dcfce7;
+      border-color: #86efac;
+    }
+    .taig-shipping-bar .bar-text {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Püsikliendi badge */
+    .taig-loyalty-msg {
+      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      border: 1px solid #fbbf24;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin: 8px 0;
+      font-size: 12px;
+      text-align: center;
+    }
+
     /* Kooli stardipakk viisard */
     .taig-wizard {
       background: linear-gradient(135deg, #fef3c7, #fde68a);
@@ -927,6 +1039,18 @@
       if (resp.ok || resp.redirected) {
         btnEl.textContent = '✅ Lisatud!';
         btnEl.style.background = '#16a34a';
+
+        // Näita progressiriba chatbotis
+        setTimeout(function() {
+          var shippingBar = renderShippingBar();
+          if (shippingBar) {
+            var messages = document.getElementById('taig-messages');
+            if (messages) {
+              messages.appendChild(shippingBar);
+              messages.scrollTop = messages.scrollHeight;
+            }
+          }
+        }, 1500);
 
         // Uuenda Magento mini-cart
         try {
@@ -1302,6 +1426,30 @@
       if (messages.children.length === 0) {
         const ctx = detectPageContext();
         addBotMessage(ctx.greeting);
+
+        // Sirvimisajaloo meeldetuletus tagasitulijale (kui on vaadanud tooteid varem)
+        if (returningVisitor && ctx.type === 'home') {
+          var viewed = getViewedProducts();
+          if (viewed.length > 0) {
+            var viewedNames = viewed.slice(0, 3).map(function(v) { return v.name; });
+            addBotMessage('Eelmine kord vaatasite: **' + viewedNames.join('**, **') + '**. Kas soovite neid uuesti vaadata?');
+          }
+        }
+
+        // Püsikliendi sõnum (3+ külastust)
+        if (visitCount >= 3 && ctx.type !== 'checkout') {
+          var loyaltyEl = document.createElement('div');
+          loyaltyEl.className = 'taig-loyalty-msg';
+          loyaltyEl.innerHTML = '⭐ Teie kui püsiklient! Kood <strong>TAGASI5</strong> annab lisaks <strong>5% soodustust!</strong>';
+          messages.appendChild(loyaltyEl);
+        }
+
+        // Progressiriba kui korvis on tooteid
+        var shippingBar = renderShippingBar();
+        if (shippingBar) {
+          messages.appendChild(shippingBar);
+        }
+
         addQuickActions(ctx.type);
 
         // Proaktiivne müük: saada lehe kontekst API-sse ja lase chatbotil ise pakkumine teha
