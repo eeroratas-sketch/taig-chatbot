@@ -109,6 +109,7 @@
   let sessionId = localStorage.getItem('taig_chat_session') || '';
   let isOpen = false;
   let isLoading = false;
+  let initialLoadDone = false; // Kas esmane laadimine on tehtud (ära keri alla enne kasutaja esimest sõnumit)
   let autoOpenDone = sessionStorage.getItem('taig_auto_opened') === 'true';
   let bubbleDismissed = sessionStorage.getItem('taig_bubble_dismissed') === 'true';
 
@@ -1533,7 +1534,10 @@
       messages.appendChild(cardRow);
     }
 
-    messages.scrollTop = messages.scrollHeight;
+    // Keri alla AINULT kui kasutaja on juba vestlust alustanud
+    if (initialLoadDone) {
+      messages.scrollTop = messages.scrollHeight;
+    }
   }
 
   function addMessage(text, type) {
@@ -1581,7 +1585,9 @@
     });
 
     messages.appendChild(wrap);
-    messages.scrollTop = messages.scrollHeight;
+    if (initialLoadDone) {
+      messages.scrollTop = messages.scrollHeight;
+    }
   }
 
   // === KOOLI STARDIPAKK VIISARD ===
@@ -1722,6 +1728,9 @@
     const input = document.getElementById('taig-input');
     const message = input.value.trim();
     if (!message) return;
+
+    // Alates kasutaja esimesest sõnumist keritakse vestlus alla
+    initialLoadDone = true;
 
     addMessage(message, 'user');
     input.value = '';
