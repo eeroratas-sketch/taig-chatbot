@@ -200,6 +200,11 @@
     if (path.includes('/checkout') || path.includes('/cart')) {
       return { type: 'checkout', greeting: t('checkoutGreeting') };
     }
+    // Toote leht - kontrolli ENNE brändi/kategooria tuvastust!
+    if (path.match(/\.html$/) || document.querySelector('.product-info-main')) {
+      return { type: 'product', greeting: t(greetingKey('productGreeting')) };
+    }
+    // Brändi/kategooria lehed (ainult kui POLE toote leht)
     if (path.includes('thule') || title.includes('thule')) {
       return { type: 'thule', greeting: t(greetingKey('homeGreeting')) };
     }
@@ -214,10 +219,6 @@
     }
     if (path.includes('kirjutus') || title.includes('kirjutus') || title.includes('pliiats') || title.includes('pastakas')) {
       return { type: 'writing', greeting: t(greetingKey('homeGreeting')) };
-    }
-    // Toote leht
-    if (path.match(/\.html$/) || document.querySelector('.product-info-main')) {
-      return { type: 'product', greeting: t(greetingKey('productGreeting')) };
     }
     // Üldine
     return { type: 'home', greeting: t(greetingKey('homeGreeting')) };
