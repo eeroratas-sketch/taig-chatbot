@@ -155,7 +155,7 @@ async def health():
         stats['chat'] = chat_engine.get_stats()
     return {
         "status": "ok",
-        "version": "1.1",
+        "version": "1.2",
         "stats": stats,
     }
 

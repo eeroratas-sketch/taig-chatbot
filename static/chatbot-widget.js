@@ -33,9 +33,11 @@
       placeholder: 'Kirjuta siia...',
       subtitle: 'taig.ee müügiassistent • vastab kohe',
       powered: 'Powered by AI ✨',
-      homeGreeting: 'Tere tulemast taig.ee poodi! 👋 Olen siin, et aidata teil leida sobivaid tooteid. Mis teid huvitab – koolitarbed, kontoritarbed või ehk Thule reisikohvrid?',
+      homeGreeting: 'Tere tulemast taig.ee poodi! 👋 Kuidas saan teid aidata?',
+      homeGreetingReturn: 'Tere tulemast tagasi! 😊 Tore teid jälle näha. Kuidas saan täna aidata?',
       checkoutGreeting: 'Näen, et olete ostmas! 🛒 Kas teadsite, et koodiga TAIG10 saate 10% soodsamalt? Kas saan millegagi aidata?',
-      productGreeting: 'Kas teil on selle toote kohta küsimusi? 🤔 Aitan hea meelega!',
+      productGreeting: 'Tere! 👋 Kas teil on selle toote kohta küsimusi? Aitan hea meelega!',
+      productGreetingReturn: 'Tere tulemast tagasi! 😊 Kas teil on selle toote kohta küsimusi?',
       schoolGreeting: 'Koolitarvete valik on meil lai! 📚 Kas otsite midagi konkreetset – pliiatseid, vihikuid, värve?',
       officeGreeting: 'Kontoritarbed mugavalt kohale! 🏢 Kas otsite midagi konkreetset?',
       exitIntent: 'Ärge lahkuge! 👋 Kasutage koodi <strong>TAIG10</strong> ja saate <strong>10% soodsamalt!</strong>',
@@ -163,6 +165,27 @@
     return context;
   }
 
+  // === TAGASITULEVA KLIENDI TUVASTUS ===
+  function isReturningVisitor() {
+    var visited = localStorage.getItem('taig_visited');
+    if (visited) {
+      return true;
+    }
+    localStorage.setItem('taig_visited', new Date().toISOString());
+    return false;
+  }
+  var returningVisitor = isReturningVisitor();
+
+  function greetingKey(base) {
+    if (returningVisitor) {
+      var returnKey = base + 'Return';
+      // Kasuta tagasituleva kliendi tervitust kui see on tõlgitud, muidu tavalist
+      var val = (I18N[VISITOR_LANG] && I18N[VISITOR_LANG][returnKey]) || I18N.et[returnKey];
+      if (val) return returnKey;
+    }
+    return base;
+  }
+
   // === KONTEKSTITUVASTUS (greetings) ===
   function detectPageContext() {
     const path = window.location.pathname.toLowerCase();
@@ -172,36 +195,35 @@
       return { type: 'checkout', greeting: t('checkoutGreeting') };
     }
     if (path.includes('thule') || title.includes('thule')) {
-      return { type: 'thule', greeting: t('homeGreeting') };
+      return { type: 'thule', greeting: t(greetingKey('homeGreeting')) };
     }
     if (path.includes('case-logic') || title.includes('case logic')) {
-      return { type: 'caselogic', greeting: t('homeGreeting') };
+      return { type: 'caselogic', greeting: t(greetingKey('homeGreeting')) };
     }
     if (path.includes('kooli') || path.includes('school') || title.includes('kooli')) {
-      return { type: 'school', greeting: t('schoolGreeting') };
+      return { type: 'school', greeting: t(greetingKey('homeGreeting')) };
     }
     if (path.includes('kontori') || path.includes('office') || title.includes('kontori')) {
-      return { type: 'office', greeting: t('officeGreeting') };
+      return { type: 'office', greeting: t(greetingKey('homeGreeting')) };
     }
     if (path.includes('kirjutus') || title.includes('kirjutus') || title.includes('pliiats') || title.includes('pastakas')) {
-      return { type: 'writing', greeting: t('officeGreeting') };
+      return { type: 'writing', greeting: t(greetingKey('homeGreeting')) };
     }
     // Toote leht
     if (path.match(/\.html$/) || document.querySelector('.product-info-main')) {
-      return { type: 'product', greeting: t('productGreeting') };
+      return { type: 'product', greeting: t(greetingKey('productGreeting')) };
     }
     // Avalehe / üldine
-    return { type: 'home', greeting: t('homeGreeting') };
+    return { type: 'home', greeting: t(greetingKey('homeGreeting')) };
   }
 
   // === QUICK-ACTION NUPUD (mitmekeelne) ===
   const QUICK_ACTIONS_I18N = {
     et: {
       home: [
+        { label: '🔍 Otsin toodet', query: 'Aita mul leida sobiv toode' },
         { label: '🧳 Thule tooted', query: 'Näita Thule kohvreid ja kotte' },
         { label: '💼 Arvutikotid', query: 'Näita arvutikotte ja seljakotte' },
-        { label: '✏️ Kirjutusvahendid', query: 'Mis pastakad ja pliiatsid teil on?' },
-        { label: '📚 Koolitarbed', query: 'Näita populaarseid koolitarbeid' },
         { label: '🏷️ Soodustused', query: 'Mis soodustused teil praegu on?' },
       ],
       school: [
@@ -218,21 +240,23 @@
       ],
       product: [
         { label: '📏 Mõõdud?', query: 'Mis on selle toote mõõdud?' },
+        { label: '📦 Saadavus?', query: 'Kas see toode on laos?' },
+        { label: '🏷️ Allahindlus?', query: 'Kas saan allahindlust?' },
         { label: '🔄 Alternatiivid', query: 'Mis alternatiive on sellele tootele?' },
-        { label: '🏷️ TAIG10 -10%', query: 'Kas saan allahindlust?' },
       ],
     },
     en: {
       home: [
-        { label: '📚 School supplies', query: 'Show me popular school supplies' },
-        { label: '✏️ Pens & pencils', query: 'What pens and pencils do you have?' },
+        { label: '🔍 Find product', query: 'Help me find a product' },
         { label: '🧳 Thule luggage', query: 'Show Thule suitcases and bags' },
+        { label: '💼 Laptop bags', query: 'Show laptop bags and backpacks' },
         { label: '🏷️ Discounts', query: 'What discounts are available?' },
       ],
       product: [
         { label: '📏 Dimensions?', query: 'What are the dimensions of this product?' },
+        { label: '📦 In stock?', query: 'Is this product in stock?' },
+        { label: '🏷️ Discount?', query: 'How to get a discount?' },
         { label: '🔄 Alternatives', query: 'What alternatives do you have?' },
-        { label: '🏷️ TAIG10 -10%', query: 'How to get a discount?' },
       ],
     },
     ru: {
@@ -1260,7 +1284,7 @@
         var proactiveMsg = '';
         var pc = readPageContext();
         if (ctx.type === 'product') {
-          proactiveMsg = '[PROAKTIIVNE MÜÜK] Klient avas chati TOOTE lehel. Toode: ' + (pc.product_name || 'tundmatu') + ', hind: ' + (pc.product_price || '?') + '. Kiida SEDA konkreetset toodet, räägi selle eelistest ja paku cross-sell tooteid. Ära paku suvalist muud toodet!';
+          proactiveMsg = '[PROAKTIIVNE MÜÜK] Klient avas chati TOOTE lehel. Toode: ' + (pc.product_name || 'tundmatu') + ', hind: ' + (pc.product_price || '?') + '. Räägi AINULT SELLEST KONKREETSEST tootest! Kiida seda, räägi eelistest. ÄRA paku alternatiive ega muid tooteid - klient tahab teada SELLE toote kohta! Alternatiive paku AINULT siis kui klient ise küsib.';
         } else if (ctx.type === 'checkout' || ctx.type === 'cart') {
           var cartInfo = '';
           if (pc.cart_items && pc.cart_items.length > 0) {
