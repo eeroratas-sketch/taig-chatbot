@@ -171,10 +171,19 @@
   </header>
 
   <div class="controls">
-    <label>Kuupäev:</label>
-    <input type="date" id="date-input">
+    <label>Alates:</label>
+    <input type="date" id="date-from">
+    <label>Kuni:</label>
+    <input type="date" id="date-to">
     <button onclick="loadDashboard()">Laadi andmed</button>
-    <button onclick="loadToday()">Täna</button>
+    <span style="border-left:1px solid #d1d5db; height:24px; margin:0 5px;"></span>
+    <button onclick="presetToday()">Täna</button>
+    <button onclick="presetYesterday()">Eile</button>
+    <button onclick="presetLastN(7)">7 päeva</button>
+    <button onclick="presetLastN(30)">30 päeva</button>
+    <button onclick="presetThisMonth()">See kuu</button>
+    <button onclick="presetAll()">Kõik</button>
+    <span style="border-left:1px solid #d1d5db; height:24px; margin:0 5px;"></span>
     <button onclick="autoRefresh()" id="refresh-btn">Auto-refresh: OFF</button>
   </div>
 
@@ -191,10 +200,27 @@
       return d.toISOString().split('T')[0];
     }
 
-    function loadToday() {
-      document.getElementById('date-input').value = today();
+    function daysAgo(n) {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      return d.toISOString().split('T')[0];
+    }
+
+    function setRange(from, to) {
+      document.getElementById('date-from').value = from;
+      document.getElementById('date-to').value = to;
       loadDashboard();
     }
+
+    function presetToday()     { setRange(today(), today()); }
+    function presetYesterday() { setRange(daysAgo(1), daysAgo(1)); }
+    function presetLastN(n)    { setRange(daysAgo(n - 1), today()); }
+    function presetThisMonth() {
+      const d = new Date();
+      const first = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+      setRange(first, today());
+    }
+    function presetAll() { setRange('2020-01-01', today()); }
 
     function autoRefresh() {
       const btn = document.getElementById('refresh-btn');
@@ -211,12 +237,13 @@
     }
 
     async function loadDashboard() {
-      const date = document.getElementById('date-input').value || today();
+      const from = document.getElementById('date-from').value || today();
+      const to = document.getElementById('date-to').value || today();
       const content = document.getElementById('content');
       content.innerHTML = '<div class="loading">Laen andmeid...</div>';
 
       try {
-        const resp = await fetch(API + '?date=' + date);
+        const resp = await fetch(API + '?date_from=' + from + '&date_to=' + to);
         const data = await resp.json();
         renderDashboard(data);
       } catch (e) {
@@ -228,7 +255,17 @@
       const content = document.getElementById('content');
       const s = data.summary;
 
-      let html = '<div class="stats-grid">';
+      // Perioodi päis
+      let periodLabel = '';
+      if (data.date_from === data.date_to) {
+        periodLabel = data.date_from;
+      } else {
+        periodLabel = data.date_from + ' kuni ' + data.date_to;
+      }
+
+      let html = '<div style="background:#eff6ff; padding:10px 15px; border-radius:8px; margin-bottom:15px; font-size:14px; color:#1e40af;"><strong>📅 Periood:</strong> ' + periodLabel + '</div>';
+
+      html += '<div class="stats-grid">';
       html += card('Vestlusi kokku', s.total_messages, '');
       html += card('Unikaalseid kliente', s.unique_sessions, '');
       html += card('Tooteid vaadatud', (s.products_viewed || []).length, '');
@@ -332,8 +369,8 @@
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // Init
-    loadToday();
+    // Init - näita tänast
+    presetToday();
   </script>
 </body>
 </html>

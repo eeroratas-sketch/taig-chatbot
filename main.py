@@ -155,7 +155,7 @@ async def health():
         stats['chat'] = chat_engine.get_stats()
     return {
         "status": "ok",
-        "version": "1.4",
+        "version": "1.5",
         "stats": stats,
     }
 
@@ -216,11 +216,34 @@ async def analytics():
 
 
 @app.get("/api/dashboard")
-async def dashboard(date: str = None):
-    """Päeva vestluste ülevaade - kes mida vaatas, küsis, mida AI vastas."""
+async def dashboard(date: str = None, date_from: str = None, date_to: str = None):
+    """Vestluste ülevaade - kuupäev või vahemik (date_from..date_to).
+
+    Parameetrid:
+    - date: üksik kuupäev (YYYY-MM-DD) - tagastab selle päeva andmed
+    - date_from + date_to: kuupäevavahemik (mõlemad kaasa arvatud)
+    - ühtegi ei anta: tagastab tänase päeva
+    """
     from collections import defaultdict
 
-    target_date = date or datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    # Määra vahemik
+    if date_from or date_to:
+        range_from = date_from or today
+        range_to = date_to or today
+    elif date:
+        range_from = date
+        range_to = date
+    else:
+        range_from = today
+        range_to = today
+
+    def in_range(ts: str) -> bool:
+        if not ts or len(ts) < 10:
+            return False
+        d = ts[:10]
+        return range_from <= d <= range_to
 
     queries_file = os.path.join(config.ANALYTICS_DIR, "queries.jsonl")
     feedback_file = os.path.join(config.ANALYTICS_DIR, "feedback.jsonl")
@@ -236,7 +259,7 @@ async def dashboard(date: str = None):
                 except:
                     continue
                 ts = d.get("timestamp", "")
-                if not ts.startswith(target_date):
+                if not in_range(ts):
                     continue
 
                 sid = d.get("session_id", "unknown")[:8]
@@ -286,7 +309,7 @@ async def dashboard(date: str = None):
                 except:
                     continue
                 ts = d.get("timestamp", "")
-                if ts.startswith(target_date):
+                if in_range(ts):
                     if d.get("rating") == "up":
                         day_stats["feedback_pos"] += 1
                     elif d.get("rating") == "down":
@@ -313,7 +336,8 @@ async def dashboard(date: str = None):
     top_questions = sorted(day_stats["popular_questions"].items(), key=lambda x: x[1], reverse=True)[:20]
 
     return {
-        "date": target_date,
+        "date_from": range_from,
+        "date_to": range_to,
         "summary": {
             "total_messages": day_stats["total_messages"],
             "unique_sessions": len(sessions),
