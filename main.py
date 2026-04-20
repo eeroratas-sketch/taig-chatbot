@@ -88,6 +88,19 @@ async def startup():
     # Loo analytics kaust
     os.makedirs(config.ANALYTICS_DIR, exist_ok=True)
 
+    # Initsialiseeri Postgres DB (kui DATABASE_URL on seadistatud)
+    try:
+        import db
+        if db.DATABASE_URL:
+            if db.init_schema():
+                log.info("Postgres DB ühendatud ja skeem valmis")
+            else:
+                log.warning("Postgres DB ühendus ebaõnnestus - logime ainult JSONL-i")
+        else:
+            log.info("DATABASE_URL puudub - logime ainult JSONL-i (ephemeral!)")
+    except Exception as e:
+        log.error(f"DB init viga: {e}")
+
     log.info(f"=== Server valmis portil {config.PORT} ===")
 
 
@@ -155,7 +168,7 @@ async def health():
         stats['chat'] = chat_engine.get_stats()
     return {
         "status": "ok",
-        "version": "1.5",
+        "version": "2.0",
         "stats": stats,
     }
 
@@ -173,6 +186,19 @@ async def feedback(request: Request):
     feedback_file = os.path.join(config.ANALYTICS_DIR, "feedback.jsonl")
     with open(feedback_file, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
+
+    # Püsiv salvestus Postgres'isse
+    try:
+        import db as db_mod
+        db_mod.log_feedback(
+            session_id=data.get("session_id"),
+            message_id=str(data.get("message_index", "")),
+            rating=data.get("rating"),
+            comment=data.get("comment"),
+        )
+    except Exception as e:
+        log.warning(f"Feedback DB logimine ebaõnnestus: {e}")
+
     return {"ok": True}
 
 
@@ -251,69 +277,97 @@ async def dashboard(date: str = None, date_from: str = None, date_to: str = None
     sessions = defaultdict(lambda: {"messages": [], "pages": set(), "products": set(), "language": "et", "first_seen": None, "last_seen": None})
     day_stats = {"total_messages": 0, "unique_sessions": 0, "products_viewed": set(), "categories_viewed": set(), "languages": defaultdict(int), "feedback_pos": 0, "feedback_neg": 0, "popular_questions": defaultdict(int)}
 
-    if os.path.exists(queries_file):
-        with open(queries_file, encoding="utf-8") as f:
-            for line in f:
-                try:
-                    d = json.loads(line)
-                except:
-                    continue
-                ts = d.get("timestamp", "")
-                if not in_range(ts):
-                    continue
+    # Andmeallikas: Postgres (püsiv) või JSONL (ephemeral)
+    db_data = None
+    try:
+        import db as db_mod
+        if db_mod.DATABASE_URL:
+            db_data = db_mod.get_dashboard_data(range_from, range_to)
+    except Exception as e:
+        log.warning(f"DB dashboard lugemine ebaõnnestus: {e}")
 
-                sid = d.get("session_id", "unknown")[:8]
-                msg = d.get("message", "")
-                resp = d.get("response", "")
-                lang = d.get("language", "et")
-                page = d.get("page", {})
+    data_source = "postgres" if db_data else "jsonl"
 
-                day_stats["total_messages"] += 1
-                day_stats["languages"][lang] += 1
+    def process_entry(ts, sid_full, msg, resp, lang, page):
+        """Ühine andmete töötlus - sama loogika JSONL ja DB jaoks."""
+        sid = (sid_full or "unknown")[:8]
+        day_stats["total_messages"] += 1
+        day_stats["languages"][lang or "et"] += 1
 
-                s = sessions[sid]
-                if not s["first_seen"]:
-                    s["first_seen"] = ts
-                s["last_seen"] = ts
-                s["language"] = lang
+        s = sessions[sid]
+        if not s["first_seen"]:
+            s["first_seen"] = ts
+        s["last_seen"] = ts
+        s["language"] = lang or "et"
 
-                # Lisa vestlus
-                entry = {"time": ts[11:19] if len(ts) > 19 else ts, "question": msg[:200]}
-                if resp:
-                    entry["answer"] = resp[:300]
-                s["messages"].append(entry)
+        entry = {"time": ts[11:19] if ts and len(ts) > 19 else ts, "question": (msg or "")[:200]}
+        if resp:
+            entry["answer"] = resp[:300]
+        s["messages"].append(entry)
 
-                # Lisa tooted/lehed
-                if page.get("product"):
-                    s["products"].add(page["product"])
-                    day_stats["products_viewed"].add(page["product"])
-                if page.get("category"):
-                    s["pages"].add(page["category"])
-                    day_stats["categories_viewed"].add(page["category"])
-                if page.get("url"):
-                    s["pages"].add(page["url"])
+        if page.get("product"):
+            s["products"].add(page["product"])
+            day_stats["products_viewed"].add(page["product"])
+        if page.get("category"):
+            s["pages"].add(page["category"])
+            day_stats["categories_viewed"].add(page["category"])
+        if page.get("url"):
+            s["pages"].add(page["url"])
 
-                # Populaarsed küsimused (filtreeri proaktiivsed välja)
-                if msg and not msg.startswith("[PROAKTIIVNE"):
-                    # Lihtsusta küsimust
-                    q = msg.lower().strip()[:80]
-                    if len(q) > 5:
-                        day_stats["popular_questions"][q] += 1
+        if msg and not msg.startswith("[PROAKTIIVNE"):
+            q = msg.lower().strip()[:80]
+            if len(q) > 5:
+                day_stats["popular_questions"][q] += 1
 
-    # Feedback
-    if os.path.exists(feedback_file):
-        with open(feedback_file, encoding="utf-8") as f:
-            for line in f:
-                try:
-                    d = json.loads(line)
-                except:
-                    continue
-                ts = d.get("timestamp", "")
-                if in_range(ts):
-                    if d.get("rating") == "up":
-                        day_stats["feedback_pos"] += 1
-                    elif d.get("rating") == "down":
-                        day_stats["feedback_neg"] += 1
+    if db_data:
+        # Loe Postgres'ist
+        for row in db_data['queries']:
+            ts = row.get('timestamp') or ''
+            page = {}
+            if row.get('product_name'):
+                page['product'] = row['product_name']
+            if row.get('category_name'):
+                page['category'] = row['category_name']
+            if row.get('page_url'):
+                page['url'] = row['page_url']
+            if row.get('product_price'):
+                page['price'] = row['product_price']
+            if row.get('product_sku'):
+                page['sku'] = row['product_sku']
+            if row.get('page_type'):
+                page['type'] = row['page_type']
+            process_entry(ts, row.get('session_id'), row.get('message'),
+                          row.get('response'), row.get('language'), page)
+        day_stats["feedback_pos"] = db_data['feedback']['positive']
+        day_stats["feedback_neg"] = db_data['feedback']['negative']
+    else:
+        # Fallback: JSONL failid
+        if os.path.exists(queries_file):
+            with open(queries_file, encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        d = json.loads(line)
+                    except:
+                        continue
+                    ts = d.get("timestamp", "")
+                    if not in_range(ts):
+                        continue
+                    process_entry(ts, d.get("session_id"), d.get("message"),
+                                  d.get("response"), d.get("language"), d.get("page", {}))
+
+        if os.path.exists(feedback_file):
+            with open(feedback_file, encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        d = json.loads(line)
+                    except:
+                        continue
+                    ts = d.get("timestamp", "")
+                    if in_range(ts):
+                        if d.get("rating") == "up":
+                            day_stats["feedback_pos"] += 1
+                        elif d.get("rating") == "down":
+                            day_stats["feedback_neg"] += 1
 
     # Koosta vastus
     sessions_list = []
@@ -338,6 +392,7 @@ async def dashboard(date: str = None, date_from: str = None, date_to: str = None
     return {
         "date_from": range_from,
         "date_to": range_to,
+        "data_source": data_source,
         "summary": {
             "total_messages": day_stats["total_messages"],
             "unique_sessions": len(sessions),

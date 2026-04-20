@@ -10,6 +10,7 @@ import time
 from datetime import datetime, timedelta
 
 import config
+import db
 
 log = logging.getLogger('taig_chatbot.chat')
 
@@ -298,7 +299,19 @@ class ChatEngine:
             with open(queries_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception as e:
-            log.warning(f"Päringu logimine ebaõnnestus: {e}")
+            log.warning(f"Päringu logimine (JSONL) ebaõnnestus: {e}")
+
+        # Püsiv logi Postgres'is (kui DATABASE_URL seadistatud)
+        try:
+            db.log_query(
+                session_id=session_id,
+                message=user_message,
+                response=ai_response,
+                language=language,
+                page_context=page_context,
+            )
+        except Exception as e:
+            log.warning(f"Päringu logimine (DB) ebaõnnestus: {e}")
 
     def chat(self, session_id, user_message, page_context=None):
         """Töötle kasutaja sõnum ja tagasta vastus."""
