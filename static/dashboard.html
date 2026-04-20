@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taig Chatbot Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+      line-height: 1.5;
+    }
+    header {
+      background: linear-gradient(135deg, #0066cc, #004499);
+      color: white;
+      padding: 20px 30px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    header h1 { font-size: 24px; font-weight: 600; }
+    header .subtitle { opacity: 0.9; font-size: 14px; margin-top: 4px; }
+    .controls {
+      background: white;
+      padding: 15px 30px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .controls label { font-weight: 600; font-size: 14px; }
+    .controls input, .controls button {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .controls button {
+      background: #0066cc;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .controls button:hover { background: #004499; }
+    .container { padding: 30px; max-width: 1400px; margin: 0 auto; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .stat-card .label { color: #6b7280; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card .value { font-size: 32px; font-weight: 700; color: #0066cc; margin-top: 8px; }
+    .stat-card .sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+    .section {
+      background: white;
+      border-radius: 10px;
+      padding: 25px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .section h2 {
+      font-size: 18px;
+      margin-bottom: 15px;
+      color: #111827;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 10px;
+    }
+    .top-questions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .question-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #f9fafb;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .question-row .count {
+      background: #0066cc;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .session {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .session-header {
+      background: #f9fafb;
+      padding: 12px 16px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+    .session-header:hover { background: #f3f4f6; }
+    .session-header .info { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; font-size: 13px; }
+    .session-header .sid { font-family: monospace; color: #0066cc; font-weight: 600; }
+    .session-header .time { color: #6b7280; }
+    .session-header .msg-count {
+      background: #10b981;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .session-header .lang {
+      background: #f59e0b;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .session-body {
+      padding: 15px 16px;
+      display: none;
+      background: white;
+    }
+    .session-body.open { display: block; }
+    .session-meta {
+      background: #eff6ff;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: #1e40af;
+    }
+    .msg {
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .msg-q { background: #dbeafe; color: #1e40af; }
+    .msg-q::before { content: '👤 '; }
+    .msg-a { background: #f0fdf4; color: #166534; margin-left: 20px; }
+    .msg-a::before { content: '🤖 '; }
+    .msg-time { font-size: 11px; color: #6b7280; margin-left: 5px; }
+    .msg-proactive { background: #fef3c7; color: #92400e; font-style: italic; }
+    .msg-proactive::before { content: '⚡ '; }
+    .loading { text-align: center; padding: 40px; color: #6b7280; }
+    .empty { text-align: center; padding: 40px; color: #6b7280; }
+    .toggle-icon { font-size: 12px; color: #6b7280; transition: transform 0.2s; }
+    .session-header.expanded .toggle-icon { transform: rotate(90deg); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📊 Taig Chatbot - Vestluste ülevaade</h1>
+    <div class="subtitle">Kes mida vaatas, kes mida küsis</div>
+  </header>
+
+  <div class="controls">
+    <label>Kuupäev:</label>
+    <input type="date" id="date-input">
+    <button onclick="loadDashboard()">Laadi andmed</button>
+    <button onclick="loadToday()">Täna</button>
+    <button onclick="autoRefresh()" id="refresh-btn">Auto-refresh: OFF</button>
+  </div>
+
+  <div class="container">
+    <div id="content" class="loading">Laen andmeid...</div>
+  </div>
+
+  <script>
+    const API = 'https://taig-chatbot.onrender.com/api/dashboard';
+    let autoRefreshInterval = null;
+
+    function today() {
+      const d = new Date();
+      return d.toISOString().split('T')[0];
+    }
+
+    function loadToday() {
+      document.getElementById('date-input').value = today();
+      loadDashboard();
+    }
+
+    function autoRefresh() {
+      const btn = document.getElementById('refresh-btn');
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+        btn.textContent = 'Auto-refresh: OFF';
+        btn.style.background = '#0066cc';
+      } else {
+        autoRefreshInterval = setInterval(loadDashboard, 30000);
+        btn.textContent = 'Auto-refresh: ON (30s)';
+        btn.style.background = '#10b981';
+      }
+    }
+
+    async function loadDashboard() {
+      const date = document.getElementById('date-input').value || today();
+      const content = document.getElementById('content');
+      content.innerHTML = '<div class="loading">Laen andmeid...</div>';
+
+      try {
+        const resp = await fetch(API + '?date=' + date);
+        const data = await resp.json();
+        renderDashboard(data);
+      } catch (e) {
+        content.innerHTML = '<div class="empty">❌ Viga andmete laadimisel: ' + e.message + '</div>';
+      }
+    }
+
+    function renderDashboard(data) {
+      const content = document.getElementById('content');
+      const s = data.summary;
+
+      let html = '<div class="stats-grid">';
+      html += card('Vestlusi kokku', s.total_messages, '');
+      html += card('Unikaalseid kliente', s.unique_sessions, '');
+      html += card('Tooteid vaadatud', (s.products_viewed || []).length, '');
+      html += card('Kategooriaid', (s.categories_viewed || []).length, '');
+      html += card('👍 Positiivseid', s.feedback.positive, '');
+      html += card('👎 Negatiivseid', s.feedback.negative, '');
+      html += '</div>';
+
+      // Keeled
+      const langs = Object.entries(s.languages || {});
+      if (langs.length > 0) {
+        html += '<div class="section"><h2>🌍 Keeled</h2><div class="top-questions">';
+        langs.sort((a,b) => b[1] - a[1]).forEach(([lang, n]) => {
+          html += '<div class="question-row"><span>' + lang.toUpperCase() + '</span><span class="count">' + n + '</span></div>';
+        });
+        html += '</div></div>';
+      }
+
+      // Top küsimused
+      if (data.top_questions && data.top_questions.length > 0) {
+        html += '<div class="section"><h2>🔥 Populaarsemad küsimused</h2><div class="top-questions">';
+        data.top_questions.forEach(q => {
+          html += '<div class="question-row"><span>' + escapeHtml(q.question) + '</span><span class="count">' + q.count + 'x</span></div>';
+        });
+        html += '</div></div>';
+      }
+
+      // Sessions
+      html += '<div class="section"><h2>💬 Vestlused (' + data.sessions.length + ')</h2>';
+      if (data.sessions.length === 0) {
+        html += '<div class="empty">Täna pole vestluseid olnud</div>';
+      } else {
+        data.sessions.forEach((sess, idx) => {
+          html += renderSession(sess, idx);
+        });
+      }
+      html += '</div>';
+
+      content.innerHTML = html;
+
+      // Click handlerid
+      document.querySelectorAll('.session-header').forEach(h => {
+        h.onclick = function() {
+          const body = this.nextElementSibling;
+          body.classList.toggle('open');
+          this.classList.toggle('expanded');
+        };
+      });
+    }
+
+    function card(label, value, sub) {
+      return '<div class="stat-card"><div class="label">' + label + '</div><div class="value">' + value + '</div>' + (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div>';
+    }
+
+    function renderSession(s, idx) {
+      const time = (s.first_seen || '').substring(11, 19);
+      const lastTime = (s.last_seen || '').substring(11, 19);
+
+      let html = '<div class="session">';
+      html += '<div class="session-header">';
+      html += '<div class="info">';
+      html += '<span class="toggle-icon">▶</span>';
+      html += '<span class="sid">' + s.session_id + '</span>';
+      html += '<span class="time">' + time + ' - ' + lastTime + '</span>';
+      html += '<span class="msg-count">' + s.message_count + ' sõnumit</span>';
+      html += '<span class="lang">' + s.language + '</span>';
+      html += '</div></div>';
+
+      html += '<div class="session-body">';
+
+      // Meta
+      if (s.products_viewed.length > 0 || s.pages.length > 0) {
+        html += '<div class="session-meta">';
+        if (s.products_viewed.length > 0) {
+          html += '<strong>📦 Vaatas tooteid:</strong> ' + s.products_viewed.slice(0, 5).map(escapeHtml).join(', ');
+          if (s.products_viewed.length > 5) html += ' (+' + (s.products_viewed.length - 5) + ')';
+          html += '<br>';
+        }
+        if (s.pages.length > 0) {
+          html += '<strong>🔗 Lehed:</strong> ' + s.pages.slice(0, 3).map(p => escapeHtml(p.substring(0, 60))).join(', ');
+        }
+        html += '</div>';
+      }
+
+      // Messages
+      s.conversation.forEach(m => {
+        const isProactive = m.question && m.question.startsWith('[PROAKTIIVNE');
+        const qClass = isProactive ? 'msg msg-proactive' : 'msg msg-q';
+        html += '<div class="' + qClass + '"><span class="msg-time">' + (m.time || '') + '</span> ' + escapeHtml(m.question || '') + '</div>';
+        if (m.answer) {
+          html += '<div class="msg msg-a">' + escapeHtml(m.answer) + '</div>';
+        }
+      });
+
+      html += '</div></div>';
+      return html;
+    }
+
+    function escapeHtml(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Init
+    loadToday();
+  </script>
+</body>
+</html>

@@ -343,6 +343,12 @@ async def serve_test():
     return FileResponse("test.html", media_type="text/html")
 
 
+@app.get("/dashboard")
+async def serve_dashboard():
+    """Vestluste ülevaate dashboard (HTML)."""
+    return FileResponse("static/dashboard.html", media_type="text/html")
+
+
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
